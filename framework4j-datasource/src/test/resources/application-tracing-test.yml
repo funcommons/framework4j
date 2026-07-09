@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: sql-tracing-test-app
+
+framework4j:
+  datasource:
+    enabled: true
+    # Primary datasource auto-selected: "default" > first configured
+    datasources:
+      # 默认数据源 - 追踪所有 SQL (使用H2)
+      default:
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb1;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 2
+          min-idle: 2
+          max-active: 10
+          validation-query: SELECT 1
+          test-while-idle: true
+          filters: stat,slf4j  # 启用 slf4j filter 打印 SQL
+          # 启用 SQL 日志输出
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+        sql-tracing:
+          mode: ALL
+          topic: default-datasource
+
+      # 业务数据源 - 仅追踪写操作 (使用H2)
+      business:
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 2
+          min-idle: 2
+          max-active: 10
+          validation-query: SELECT 1
+          test-while-idle: true
+          filters: stat,slf4j  # 启用 slf4j filter 打印 SQL
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+        sql-tracing:
+          mode: WRITE_ONLY
+
+      # 日志数据源 - 禁用追踪 (使用H2)
+      log:
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb3;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 1
+          min-idle: 1
+          max-active: 5
+          validation-query: SELECT 1
+          test-while-idle: true
+          filters: stat,slf4j  # 启用 slf4j filter 打印 SQL
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+        sql-tracing:
+          mode: DISABLED  # 禁用追踪
+          topic: audit-log-datasource
+
+logging:
+  level:
+    fun.commons: DEBUG
+    org.springframework.jdbc: DEBUG
+    com.alibaba.druid: DEBUG
+    druid.sql.Statement: DEBUG  # 打印 Druid SQL 日志
+    druid.sql.ResultSet: INFO
+
+# H2数据库控制台配置（可选，用于调试）
+spring.h2.console:
+  enabled: true
+  path: /h2-console
+  settings:
+    web-allow-others: true

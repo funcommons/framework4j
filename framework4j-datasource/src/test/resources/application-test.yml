@@ -1,0 +1,134 @@
+spring:
+  application:
+    name: datasource-test
+
+framework4j:
+  datasource:
+    enabled: true
+    # Primary datasource auto-selected: "default" > first configured
+    datasources:
+      # 默认数据源 -> testdb1 (使用H2)
+      default:
+        aliases: [main]
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb1;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 2
+          min-idle: 2
+          max-active: 10
+          max-wait: 60000
+          time-between-eviction-runs-millis: 60000
+          min-evictable-idle-time-millis: 300000
+          validation-query: SELECT 1
+          test-while-idle: true
+          test-on-borrow: false
+          test-on-return: false
+          pool-prepared-statements: false
+          # 禁用Druid SQL防火墙以兼容H2语法
+          filter:
+            - stat
+          # 不包含wall过滤器
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+
+      # 业务数据源 -> testdb2 (别名: order, product)
+      business:
+        type: com.alibaba.druid.pool.DruidDataSource
+        aliases: [order, product]
+        url: jdbc:h2:mem:testdb2;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL;LOCK_TIMEOUT=30000
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 5
+          min-idle: 5
+          max-active: 60
+          max-wait: 120000
+          time-between-eviction-runs-millis: 60000
+          min-evictable-idle-time-millis: 300000
+          validation-query: SELECT 1
+          test-while-idle: true
+          test-on-borrow: false
+          test-on-return: false
+          pool-prepared-statements: false
+          # 禁用Druid SQL防火墙以兼容H2语法
+          filter:
+            - stat
+          # 不包含wall过滤器
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+
+      # 日志数据源 -> testdb3
+      log:
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb3;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 1
+          min-idle: 1
+          max-active: 5
+          max-wait: 60000
+          time-between-eviction-runs-millis: 60000
+          min-evictable-idle-time-millis: 300000
+          validation-query: SELECT 1
+          test-while-idle: true
+          test-on-borrow: false
+          test-on-return: false
+          pool-prepared-statements: false
+          # 禁用Druid SQL防火墙以兼容H2语法
+          filter:
+            - stat
+          # 不包含wall过滤器
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+        sql-tracing:
+          mode: WRITE_ONLY
+          topic: audit-log-datasource
+
+      # 报表数据源 -> testdb4
+      report:
+        type: com.alibaba.druid.pool.DruidDataSource
+        url: jdbc:h2:mem:testdb4;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=MySQL
+        username: sa
+        password:
+        driver-class-name: org.h2.Driver
+        druid:
+          initial-size: 1
+          min-idle: 1
+          max-active: 5
+          max-wait: 60000
+          time-between-eviction-runs-millis: 60000
+          min-evictable-idle-time-millis: 300000
+          validation-query: SELECT 1
+          test-while-idle: true
+          test-on-borrow: false
+          test-on-return: false
+          pool-prepared-statements: false
+          # 禁用Druid SQL防火墙以兼容H2语法
+          filter:
+            - stat
+          # 不包含wall过滤器
+          connection-properties: druid.stat.mergeSql=false;druid.stat.slowSqlMillis=0
+        mybatis-plus:
+          type-aliases-package: fun.commons.framework4j.datasource.entity
+
+logging:
+  level:
+    fun.commons: DEBUG
+    org.springframework.jdbc: DEBUG
+    com.alibaba.druid: INFO
+
+# H2数据库控制台配置（可选，用于调试）
+spring.h2.console:
+  enabled: true
+  path: /h2-console
+  settings:
+    web-allow-others: true

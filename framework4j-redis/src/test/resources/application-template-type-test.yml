@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: template-type-test-app
+
+framework4j:
+  redis:
+    enabled: true
+    primary:
+      template: defaultRedisTemplate
+    datasources:
+      # 数据源 1: 字符串类型（默认）
+      default:
+        host: localhost
+        port: 6379
+        database: 0
+        template-type: string  # StringRedisTemplate
+        lettuce:
+          pool:
+            max-active: 8
+
+      # 数据源 2: 字符串类型（显式配置）
+      cache:
+        host: localhost
+        port: 6379
+        database: 1
+        template-type: string  # StringRedisTemplate（显式）
+        lettuce:
+          pool:
+            max-active: 8
+
+      # 数据源 3: 对象类型（fastjson2 序列化）
+      business:
+        host: localhost
+        port: 6379
+        database: 2
+        template-type: object  # RedisTemplate<String, Object>
+        lettuce:
+          pool:
+            max-active: 8
+
+      # 数据源 4: 对象类型（用于用户会话）
+      session:
+        host: localhost
+        port: 6379
+        database: 3
+        template-type: object  # RedisTemplate<String, Object>
+        redisson:
+          enabled: false
+        lettuce:
+          pool:
+            max-active: 8
+
+logging:
+  level:
+    fun.commons: DEBUG

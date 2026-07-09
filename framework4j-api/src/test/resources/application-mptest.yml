@@ -1,0 +1,38 @@
+spring:
+  application:
+    name: id-sdk-mptest
+
+  # Spring Boot 原生 DataSource 配置（H2 内存 + PostgreSQL 兼容模式）
+  # 不再依赖 framework4j-datasource 模块，core 与 datasource 完全解耦
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: fun.commons.framework4j.id.integration
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# ID SDK 配置（IP 策略，测试无 Redis 环境）
+framework4j:
+  id:
+    enabled: true
+    worker:
+      strategy: ip
+    mybatis:
+      enabled: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+logging:
+  level:
+    fun.commons: DEBUG
+    org.springframework.jdbc: DEBUG

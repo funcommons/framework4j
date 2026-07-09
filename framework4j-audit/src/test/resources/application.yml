@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: audit-test
+
+framework4j:
+  audit:
+    enabled: true
+    hash-chain-enabled: true
+    hash-algorithm: SHA-256
+    actor-header: X-User-Id
+    actor-fallback: anonymous
+    ip-header: X-Forwarded-For

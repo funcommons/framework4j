@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: framework4j-demo
+  web:
+    resources:
+      static-locations: classpath:/static/
+  redis:
+    host: localhost
+    port: 6379
+  lettuce:
+    pool:
+      max-active: 8
+  # H2 内存数据库（demo 用）
+  datasource:
+    url: jdbc:h2:mem:demo
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+framework4j:
+  redis:
+    enabled: true
+    datasources:
+      default:
+        host: localhost
+        port: 6379
+        database: 0
+
+  access-token:
+    enabled: true
+    redis-name: default
+    secret-key: demo-secret-key-for-jwt-signing-must-be-at-least-32-chars
+    hash-salt: demo-hash-salt
+    expire-time: 7200
+    policies:
+      WEB:
+        key: [uid]
+        expire-time: 7200
+        max-usage: -1
+        auto-renew: true
+        renew-increment: 1800
+
+  signature:
+    enabled: true
+    redis-name: default
+    path-patterns: ["/v1/api/**"]
+
+  rate-limit:
+    enabled: true
+    redis-name: default
+    default-limit: 10
+    default-window: "1m"
+    path-patterns: ["/v1/**"]
+
+  cache:
+    enabled: true
+    redis-name: default
+    default-ttl-seconds: 300
+
+  audit:
+    enabled: true
+    hash-chain-enabled: true
+
+  sensitive:
+    enabled: true
+    encryption-key: demo-aes-key-change-in-production

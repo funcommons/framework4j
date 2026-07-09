@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: signature-integration-test
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 3000
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 2
+      max-wait: 3000ms
+
+framework4j:
+  redis:
+    enabled: true
+    datasources:
+      default:
+        host: localhost
+        port: 6379
+        database: 0
+        timeout: 3000
+        lettuce:
+          pool:
+            max-active: 8
+            max-idle: 8
+            min-idle: 2
+            max-wait: 3000
+        redisson:
+          enabled: false
+
+  signature:
+    enabled: true
+    redis-name: default
+    timestamp-tolerance-ms: 300000
+    nonce-ttl-seconds: 600
+    path-patterns: ["/v1/api/**"]
+    exclude-path-patterns: []
+    nonce-key-prefix: "signature:nonce"
+
+  rate-limit:
+    enabled: true
+    redis-name: default
+    default-limit: 3
+    default-window: "10s"
+    default-algorithm: "sliding_window"
+    default-scope: "ip"
+    include-headers: true
+    path-patterns: ["/v1/**"]

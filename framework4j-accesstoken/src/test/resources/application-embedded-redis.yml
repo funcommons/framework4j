@@ -1,0 +1,85 @@
+spring:
+  application:
+    name: accesstoken-embedded-test
+  # 启用内嵌Redis配置
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 3000
+  # 使用lettuce连接池
+  lettuce:
+    pool:
+      max-active: 8
+      max-idle: 8
+      min-idle: 2
+      max-wait: 3000ms
+
+framework4j:
+  # Multi-Redis 模块配置（必需）
+  redis:
+    enabled: true
+    datasources:
+      default:
+        host: localhost
+        port: 6379
+        database: 0
+        timeout: 3000
+        lettuce:
+          pool:
+            max-active: 8
+            max-idle: 8
+            min-idle: 2
+            max-wait: 3000
+        redisson:
+          enabled: true
+          config:
+            singleServerConfig:
+              address: "redis://localhost:6379"
+              database: 0
+              connectionPoolSize: 10
+              connectionMinimumIdleSize: 2
+              timeout: 3000
+
+  access-token:
+    enabled: true
+    redis-name: default
+    secret-key: test-secret-key-for-embedded-redis-jwt-signing-must-be-at-least-32-chars-long-xx
+    hash-salt: test-hash-salt-for-embedded-redis-security-must-be-non-empty
+    expire-time: 3600
+    policies:
+      # 管理员策略 - 单点登录，长过期时间
+      ADMIN:
+        key: [uid]
+        expire-time: 7200
+        max-usage: -1
+        auto-renew: true
+        renew-increment: 1800
+
+      # APP策略 - 多设备登录
+      APP:
+        key: [uid, deviceId]
+        expire-time: 1800
+        max-usage: 100
+        auto-renew: false
+
+      # 一次性策略 - 只能使用一次
+      RESET:
+        key: [uid, type]
+        expire-time: 300
+        max-usage: 1
+        auto-renew: false
+
+      # 短期策略 - 短过期时间
+      INVITE:
+        key: [inviteCode]
+        expire-time: 60
+        max-usage: 1
+        auto-renew: false
+
+      # Web策略 - 自动续期
+      WEB:
+        key: [uid]
+        expire-time: 3600
+        max-usage: -1
+        auto-renew: true
+        renew-increment: 300  # 5分钟续期一次

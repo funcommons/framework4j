@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fun.commons</groupId>
+        <artifactId>framework4j</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>framework4j-all</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Commons All</name>
+    <description>Commons SDK 所有模块引入</description>
+
+    <dependencies>
+        <!-- API 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Web 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-web</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Signature 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-signature</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Rate Limit 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-rate-limit</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Cache 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-cache</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Audit 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-audit</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Sensitive 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-sensitive</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Redis 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-redis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- DataSource 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-datasource</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- AccessToken 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-accesstoken</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Idempotency 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-idempotency</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Datetime 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-datetime</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- ID 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-id</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- SQL Tracing 模块 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-sql-tracing</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+    </dependencies>
+</project>

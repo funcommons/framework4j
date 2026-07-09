@@ -1,0 +1,78 @@
+spring:
+  application:
+    name: accesstoken-test
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfigurationV2
+  redis:
+    host: localhost
+    port: 6379
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 2
+        max-wait: 3000ms
+
+framework4j:
+  redis:
+    enabled: true
+    datasources:
+      default:
+        host: localhost
+        port: 6379
+        database: 0
+        timeout: 3000
+        lettuce:
+          pool:
+            max-active: 8
+            max-idle: 8
+            min-idle: 2
+            max-wait: 3000
+        redisson:
+          enabled: true
+          config:
+            singleServerConfig:
+              address: "redis://localhost:6379"
+              database: 0
+              connectionPoolSize: 10
+              connectionMinimumIdleSize: 2
+              timeout: 3000
+
+  access-token:
+    enabled: true
+    redis-name: default
+    secret-key: test-secret-key-for-jwt-signing-must-be-at-least-32-characters-long-xx
+    hash-salt: test-hash-salt-for-security-must-be-non-empty
+    expire-time: 7200
+    policies:
+      ADMIN:
+        key:
+          - uid
+        expire-time: 3600
+        max-usage: -1
+        auto-renew: true
+      APP:
+        key:
+          - uid
+          - dev
+        expire-time: 7200
+        max-usage: -1
+      RESET:
+        key:
+          - uid
+        expire-time: 300
+        max-usage: 1
+        auto-renew: false
+      INVITE:
+        key:
+          - code
+        expire-time: 60
+        max-usage: 1
+        auto-renew: false
+      WEB:
+        key:
+          - uid
+        expire-time: 86400
+        max-usage: -1
