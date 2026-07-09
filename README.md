@@ -30,6 +30,31 @@
 
 ### 1. 引入依赖
 
+#### 方式一：JitPack（推荐，无需手动 install）
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.funcommons.framework4j</groupId>
+    <artifactId>framework4j-all</artifactId>
+    <version>v1.0.0</version>
+</dependency>
+```
+
+#### 方式二：本地 install
+
+```bash
+git clone https://github.com/funcommons/framework4j.git
+cd framework4j
+mvn -DskipTests install
+```
+
 ```xml
 <dependency>
     <groupId>fun.commons</groupId>
