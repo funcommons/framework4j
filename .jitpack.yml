@@ -1,0 +1,8 @@
+# JitPack 构建配置
+# https://jitpack.io/docs/BUILDING/
+
+jdk:
+  - openjdk17
+
+# JitPack 默认传入 -Djitpack=true，父 pom 的 profile 会自动跳过 demo 模块
+# 无需额外 before_install 脚本

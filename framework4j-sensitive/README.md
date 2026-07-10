@@ -138,9 +138,12 @@ public class EncryptedFieldTypeHandler extends BaseTypeHandler<String> {
 
 ## 自动装配
 
-- `SensitiveAutoConfiguration` 注册 Jackson 模块 + TypeHandler
+- `SensitiveAutoConfiguration` 注册 Jackson 模块（@Sensitive 字段脱敏）
 - 通过 `framework4j.sensitive.enabled=false` 关闭
-- TypeHandler 仅当 `framework4j.sensitive.encryption-key` 配置时注册
+- **`EncryptedFieldTypeHandler` 不再作为 Spring Bean 注册**（v2.2 修复）
+  - 原因：MyBatis-Plus 会通过 Spring 容器扫描 `BaseTypeHandler<T>` Bean 并按类型擦除注册为全局 handler，导致所有未指定 typeHandler 的 String 字段（JSONB / email / nickname 等）被默认加密
+  - 正确用法：在实体字段显式 `@TableField(typeHandler = EncryptedFieldTypeHandler.class)`，由 MyBatis-Plus mapper 字段级 typeHandler 精确应用
+  - 若需全局生效，可在自己项目的 `MybatisPlusConfig` 中显式注册 handler 实例（绕开 Spring 容器）
 
 ## 安全注意
 

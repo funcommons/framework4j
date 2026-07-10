@@ -96,6 +96,11 @@ public class RateLimitInterceptor implements HandlerInterceptor {
             // 由 writeTooManyRequests 包装为 HTTP 429 + 信封 10500 + Retry-After
             RateLimitException ex = rateLimitService.buildException(result);
             if (properties.isIncludeHeaders()) {
+                // v2.2 P1: 失败路径也补齐"三件套"（原仅设 Retry-After），客户端能解析剩余配额
+                response.setHeader("X-RateLimit-Limit", String.valueOf(result.limit()));
+                response.setHeader("X-RateLimit-Remaining", "0");
+                response.setHeader("X-RateLimit-Reset",
+                        String.valueOf(result.resetAtMs() / 1000));
                 response.setHeader("Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
             }
             writeTooManyRequests(response, ex);

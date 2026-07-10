@@ -1,0 +1,25 @@
+# 北京时间测试配置
+spring:
+  # Jackson 配置为北京时间格式
+  jackson:
+    time-zone: GMT+8
+    date-format: yyyy-MM-dd HH:mm:ss
+    serialization:
+      write-dates-as-timestamps: false
+
+  # FastJSON2 配置为北京时间格式
+  fastjson2:
+    format:
+      date-format: yyyy-MM-dd HH:mm:ss
+      time-zone: GMT+8
+
+# 启用 FastJSON2
+ldx2t:
+  commons:
+    openid:
+      fastjson2:
+        enabled: true
+
+# JVM 时区设置
+jvm:
+  arguments: "-Duser.timezone=Asia/Shanghai"

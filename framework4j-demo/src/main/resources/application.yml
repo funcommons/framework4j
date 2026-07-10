@@ -63,4 +63,4 @@ framework4j:
 
   sensitive:
     enabled: true
-    encryption-key: demo-aes-key-change-in-production
+    encryption-key: demo-aes-key-change-in-production!!

@@ -83,12 +83,34 @@ public final class AesGcmCryptoUtil {
         }
     }
 
-    public static byte[] deriveKey(String anyKey) {
+    /**
+     * 从任意字符串派生 32 字节 AES 密钥（SHA-256）。
+     * <p>P0-2: 派生密钥仅在开发/测试环境使用。生产环境必须从 KMS 取 32 字节随机密钥，
+     * 通过 {@link #deriveKeyFromBytes(byte[])} 直接传入。
+     */
+    public static byte[] deriveKey(String passphrase) {
+        if (passphrase == null || passphrase.length() < 32) {
+            throw new IllegalArgumentException(
+                "AES 密钥派生失败：passphrase 必须 ≥ 32 字符（实际 "
+                + (passphrase == null ? 0 : passphrase.length()) + "）");
+        }
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            return md.digest(anyKey.getBytes(StandardCharsets.UTF_8));
+            return md.digest(passphrase.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             throw new IllegalStateException("derive key failed", e);
         }
+    }
+
+    /**
+     * 直接使用 32 字节密钥（生产环境推荐，从 KMS 取）。
+     */
+    public static byte[] deriveKeyFromBytes(byte[] rawKey) {
+        if (rawKey == null || rawKey.length != 32) {
+            throw new IllegalArgumentException(
+                "AES-256 密钥必须为 32 字节（实际 "
+                + (rawKey == null ? 0 : rawKey.length) + "）");
+        }
+        return rawKey;
     }
 }

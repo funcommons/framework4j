@@ -39,3 +39,6 @@ logs/
 *.bak
 *.orig
 *~
+node_modules/
+docs/.vitepress/dist/
+docs/.vitepress/cache/

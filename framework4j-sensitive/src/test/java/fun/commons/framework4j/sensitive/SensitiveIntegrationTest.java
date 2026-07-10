@@ -20,7 +20,7 @@ class SensitiveIntegrationTest {
     @Test
     @DisplayName("加解密往返：decrypt(encrypt(plain)) == plain")
     void encryptDecryptRoundTrip() {
-        byte[] key = AesGcmCryptoUtil.deriveKey("my-secret-key");
+        byte[] key = AesGcmCryptoUtil.deriveKey("my-secret-key-padding-to-32-chars!!");
         String plaintext = "身份证:110101199001011234 手机:13812345678";
 
         String cipher = AesGcmCryptoUtil.encrypt(key, plaintext);
@@ -33,7 +33,7 @@ class SensitiveIntegrationTest {
     @Test
     @DisplayName("每次加密结果不同（随机 IV）")
     void randomIv() {
-        byte[] key = AesGcmCryptoUtil.deriveKey("key");
+        byte[] key = AesGcmCryptoUtil.deriveKey("key-padding-padding-padding-padding-pad!");
         String plain = "same-plaintext";
 
         String c1 = AesGcmCryptoUtil.encrypt(key, plain);
@@ -48,8 +48,8 @@ class SensitiveIntegrationTest {
     @Test
     @DisplayName("错误密钥解密失败（GCM Tag 校验）")
     void wrongKeyFails() {
-        byte[] key1 = AesGcmCryptoUtil.deriveKey("key1");
-        byte[] key2 = AesGcmCryptoUtil.deriveKey("key2");
+        byte[] key1 = AesGcmCryptoUtil.deriveKey("key1-padding-padding-padding-padding-pad!");
+        byte[] key2 = AesGcmCryptoUtil.deriveKey("key2-padding-padding-padding-padding-pad!");
         String cipher = AesGcmCryptoUtil.encrypt(key1, "secret");
 
         // v2.1 P0: 改用 assertThrows 替代 try/catch + assertThat(false) 反模式

@@ -70,9 +70,21 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * v2.2 P1 修复：仅对写方法生效（POST/PUT/PATCH/DELETE）。
+     * <p>原实现对所有 method 都生效，导致 GET 请求带 Idempotency-Key 时也走 Redis 检查 — 浪费且语义错位。
+     * <p>PUT/PATCH 与 POST 一样可重复提交，必须纳入保护。
+     */
+    private static final java.util.Set<String> WRITE_METHODS =
+            java.util.Set.of("POST", "PUT", "PATCH", "DELETE");
+
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
+        // v2.2 P1: 非写方法直接放行（GET/HEAD/OPTIONS 不需要幂等保护）
+        if (!WRITE_METHODS.contains(request.getMethod().toUpperCase())) {
+            return true;
+        }
         String headerName = properties.getHeaderName();
         String key = request.getHeader(headerName);
         if (key == null || key.isEmpty()) {

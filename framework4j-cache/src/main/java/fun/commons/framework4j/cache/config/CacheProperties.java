@@ -36,6 +36,14 @@ public class CacheProperties {
         private int maxSize = 10000;
         /** Caffeine 写后过期（秒） */
         private long expireAfterWrite = 600;
+        /**
+         * v2.2 P1: 跨实例 L1 一致性 — 启用 Redis Pub/Sub 广播失效事件
+         * <p>本进程 evict 时发 {@code <keyPrefix>:invalidate} 消息；其他实例订阅并清本地 L1
+         * <p>默认 true（强烈推荐生产开启）。关闭时只清本进程 L1，多实例可能短暂读到旧值
+         */
+        private boolean broadcastEvict = true;
+        /** Pub/Sub channel 后缀（与 keyPrefix 拼接） */
+        private String broadcastChannelSuffix = ":invalidate";
     }
 
     @Data

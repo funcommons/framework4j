@@ -47,7 +47,7 @@ for (const [name, readmePath] of Object.entries(modules)) {
   const dest = join(docsModulesDir, `${name}.md`);
   if (existsSync(src)) {
     try { rmSync(dest); } catch {}
-    // 仅转义代码块外的 XML/HTML 标签（防 Vue 误解析），代码块内保持原样
+    // 转义代码块外的 XML/HTML 标签（防 Vue 误解析），代码块内保持原样
     const content = readFileSync(src, 'utf-8');
     const parts = content.split(/(```[\s\S]*?```)/g);
     const processed = parts.map((part, i) => {
@@ -58,6 +58,26 @@ for (const [name, readmePath] of Object.entries(modules)) {
     console.log(`  ✅ ${name}.md`);
   } else {
     console.log(`  ⚠️  ${name}.md (README not found: ${readmePath})`);
+  }
+}
+
+// === Step 1b: 复制 skills/SKILL.md → docs/skills/ ===
+const docsSkillsDir = join(root, 'docs', 'skills');
+mkdirSync(docsSkillsDir, { recursive: true });
+const skillsDir = join(root, 'skills');
+if (existsSync(skillsDir)) {
+  console.log('\n📝 Step 1b: 复制 skills/SKILL.md → docs/skills/');
+  for (const dir of readdirSync(skillsDir)) {
+    if (!dir.startsWith('fwk4j-')) continue;
+    const skillFile = join(skillsDir, dir, 'SKILL.md');
+    if (existsSync(skillFile)) {
+      const content = readFileSync(skillFile, 'utf-8');
+      // 去掉 frontmatter（VitePress 不需要）
+      const body = content.replace(/^---[\s\S]*?---\n/, '');
+      const dest = join(docsSkillsDir, `${dir}.md`);
+      writeFileSync(dest, body);
+      console.log(`  ✅ ${dir}.md`);
+    }
   }
 }
 

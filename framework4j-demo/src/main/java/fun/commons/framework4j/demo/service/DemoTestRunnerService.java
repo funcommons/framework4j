@@ -81,7 +81,7 @@ public class DemoTestRunnerService {
     private TestResult testSensitiveEncrypt() {
         long start = System.currentTimeMillis();
         try {
-            byte[] key = AesGcmCryptoUtil.deriveKey("test-key");
+            byte[] key = AesGcmCryptoUtil.deriveKey("demo-test-key-must-be-32-chars-long");
             String plain = "secret-data-12345";
             String cipher = AesGcmCryptoUtil.encrypt(key, plain);
             String decrypted = AesGcmCryptoUtil.decrypt(key, cipher);

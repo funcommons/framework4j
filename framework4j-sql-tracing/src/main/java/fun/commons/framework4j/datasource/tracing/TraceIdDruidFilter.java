@@ -175,6 +175,7 @@ public class TraceIdDruidFilter extends FilterEventAdapter {
 
     private boolean isReadOperation(String sql) {
         String upperSql = sql.toUpperCase(Locale.ROOT);
+        // v2.2 P1: 增补 CTE 语法（WITH ... AS (SELECT ...)），原实现漏检会被当写操作
         return upperSql.startsWith("SELECT ")
                 || upperSql.startsWith("SELECT\t")
                 || upperSql.startsWith("SELECT\n")
@@ -184,7 +185,8 @@ public class TraceIdDruidFilter extends FilterEventAdapter {
                 || upperSql.startsWith("SHOW ")
                 || upperSql.startsWith("DESCRIBE ")
                 || upperSql.startsWith("DESC ")
-                || upperSql.startsWith("EXPLAIN ");
+                || upperSql.startsWith("EXPLAIN ")
+                || upperSql.startsWith("WITH ");   // CTE 开头
     }
 
     private String getTraceId() {

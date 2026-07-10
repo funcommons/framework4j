@@ -58,7 +58,7 @@ public record UserVO(
 
 @GetMapping("/v1/users/{open_id}")
 public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
-    Long id = OpenId.decode(openId);  // 12 字符串 → Long
+    Long id = IdObfuscator.fromOpenId(openId);  // 12 字符串 → Long
     return ApiResponse.success(userService.find(id), TraceContext.getTraceId());
 }
 ```
@@ -111,15 +111,18 @@ public interface WorkerIdStrategy {
 - `RedisWorkerIdStrategy`：租约模式，多实例不冲突（推荐生产）
 - `IpHashWorkerIdStrategy`：IP 哈希取模，无 Redis 兜底（适合开发）
 
-### `OpenID`
+### `IdObfuscator`
 
 ```java
-public class OpenID {
-    public static String encode(Long id);   // Long → 12 字符串
-    public static Long decode(String openId); // 12 字符串 → Long
-    public static boolean isValid(String openId);  // 校验位验证
+public class IdObfuscator {
+    public static String toOpenId(Long id);    // Long → 12 字符串
+    public static Long fromOpenId(String s);    // 12 字符串 → Long
+    public static boolean isValid(String s);    // 校验位验证
+    public static String toOpenId(long id, String prefix);  // 带业务前缀
 }
 ```
+
+> v2.2 修正：原 README 写 `OpenID.encode/decode`（全大写类名 + encode/decode 方法名），与代码不一致。实际是 `IdObfuscator.toOpenId/fromOpenId`。若需 `OpenID` 门面类请提 issue。
 
 ### `@OpenId`（注解）
 
@@ -170,7 +173,7 @@ public class OrderService {
 // Controller 入参：12 字符串
 @GetMapping("/v1/users/{open_id}")
 public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
-    Long id = OpenId.decode(openId);  // 12 字符串 → Long
+    Long id = IdObfuscator.fromOpenId(openId);  // 12 字符串 → Long
     UserDO user = userService.find(id);
     UserVO vo = new UserVO(user.getId(), user.getName());  // @OpenId 自动编码
     return ApiResponse.success(vo, TraceContext.getTraceId());
@@ -203,7 +206,7 @@ framework4j:
 A：UUID 128 位、无序、索引性能差。雪花 ID 64 位、时间有序、适合做 MySQL 主键。OpenID 12 字符串仅用于对外暴露，数据库仍存 `Long`。
 
 **Q2：OpenID 能被逆向回 Long 吗？**
-A：不能直接逆向（HMAC-SHA256 单向）。但同 salt 下，同一个 `Long` 永远映射到同一个 OpenID（确定性），所以应用层 `OpenId.decode(openId)` 能还原。salt 泄露 = OpenID 失效，必须环境变量注入。
+A：不能直接逆向（HMAC-SHA256 单向）。但同 salt 下，同一个 `Long` 永远映射到同一个 OpenID（确定性），所以应用层 `IdObfuscator.fromOpenId(openId)` 能还原。salt 泄露 = OpenID 失效，必须环境变量注入。
 
 **Q3：雪花 ID 会重复吗？**
 A：`RedisWorkerIdStrategy` 模式下不会（每个实例独立 `workerId`）。`IpHashWorkerIdStrategy` 模式下，同 IP 多实例会冲突（仅适合开发）。生产必须用 Redis 模式。

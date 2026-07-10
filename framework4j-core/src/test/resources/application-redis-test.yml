@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: id-sdk-redis-test
+  autoconfigure:
+    exclude:
+      - org.redisson.spring.starter.RedissonAutoConfigurationV2
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration
+      - org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration
+
+# ID SDK 配置 (Redis 策略)
+ldx2t:
+  commons:
+    id:
+      enabled: true
+      worker:
+        strategy: redis
+        redis-name: stringRedisTemplate
+      mybatis:
+        enabled: false
+
+    redis:
+      enabled: true
+      datasources:
+        default:
+          host: localhost
+          port: 6379
+          database: 0
+          timeout: 3000
+          lettuce:
+            pool:
+              max-active: 8
+              max-idle: 8
+              min-idle: 2
+          redisson:
+            enabled: false
+logging:
+  level:
+    com.ldx2t: DEBUG

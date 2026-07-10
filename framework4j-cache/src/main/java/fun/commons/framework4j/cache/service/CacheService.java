@@ -34,19 +34,27 @@ public class CacheService {
     private final StringRedisTemplate redisTemplate;
     private final CacheProperties properties;
     private final SingleFlightService singleFlightService;
+    private final String broadcastAppName;
 
-    /** 每 prefix 一个 Caffeine 实例（独立配额）— v2.1 P1: 加 prefix 数量上限防 OOM */
+    public CacheService(StringRedisTemplate redisTemplate,
+                        CacheProperties properties,
+                        SingleFlightService singleFlightService,
+                        String appName) {
+        this.redisTemplate = redisTemplate;
+        this.properties = properties;
+        this.singleFlightService = singleFlightService;
+        this.broadcastAppName = appName != null ? appName : "default";
+    }
     private final Map<String, Cache<String, String>> l1Caches = new ConcurrentHashMap<>();
     /** v2.1 P1: prefix 上限（默认 1024，超出后所有新 prefix 共用一个 "overflow" Caffeine） */
     private static final int MAX_PREFIXES = 1024;
     private static final String OVERFLOW_PREFIX = "__overflow__";
 
+    /** 兼容旧构造（3 参数，broadcastAppName = "default"） */
     public CacheService(StringRedisTemplate redisTemplate,
                         CacheProperties properties,
                         SingleFlightService singleFlightService) {
-        this.redisTemplate = redisTemplate;
-        this.properties = properties;
-        this.singleFlightService = singleFlightService;
+        this(redisTemplate, properties, singleFlightService, "default");
     }
 
     /**
@@ -142,12 +150,21 @@ public class CacheService {
     }
 
     /**
-     * 删缓存（L1+L2 双删）
+     * 删缓存（L1+L2 双删 + v2.2 Pub/Sub 跨实例广播）
+     * <p>
+     * 流程：
+     * <ol>
+     *   <li>清本进程 L1（Caffeine）</li>
+     *   <li>删 L2（Redis）</li>
+     *   <li>Pub/Sub 广播 {@code <keyPrefix>:invalidate} → 消息体是 {@code "<prefix>:<key>"}，
+     *       其他实例订阅收到后清各自 L1</li>
+     * </ol>
+     * <p>三步任一失败不影响其他步骤（fail-soft）。生产强烈建议开启 broadcastEvict
+     * （默认 true），否则多实例 L1 可能短暂读到旧值。
      */
     public void evict(String prefix, String key) {
         String fullKey = prefix + ":" + key;
         if (properties.getL1().isEnabled()) {
-            // v2.1 P1: 用 getL1Cache 统一获取（含 overflow 兜底）
             getL1Cache(prefix).invalidate(l1EntryKey(prefix, fullKey));
         }
         try {
@@ -155,6 +172,27 @@ public class CacheService {
         } catch (Exception e) {
             log.warn("[Cache] L2 evict failed: {}", e.getMessage());
         }
+        // v2.2 P1: 广播失效事件，跨实例清 L1（P2-1: channel 含 appName 隔离）
+        if (properties.getL1().isEnabled() && properties.getL1().isBroadcastEvict()) {
+            try {
+                String channel = properties.getKeyPrefix() + ":" + broadcastAppName + properties.getL1().getBroadcastChannelSuffix();
+                redisTemplate.convertAndSend(channel, fullKey);
+            } catch (Exception e) {
+                // 广播失败不致命：仅本进程 L1 已清，其他实例 L1 仍可能 stale，下次读时会因 L2 已删而回源
+                log.warn("[Cache] broadcast evict failed: {}", e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * v2.2 P1: 仅清本进程 L1（不删 L2、不广播）。用于 Pub/Sub 订阅器收到其他实例广播后调用。
+     * <p>内部方法名带 {@code L1Only} 后缀明确语义。
+     */
+    public void evictLocalL1Only(String prefix, String key) {
+        if (!properties.getL1().isEnabled()) return;
+        String fullKey = prefix + ":" + key;
+        getL1Cache(prefix).invalidate(l1EntryKey(prefix, fullKey));
+        log.debug("[Cache] L1 cleared from broadcast: {}", fullKey);
     }
 
     // ==================== 批量预热 ====================

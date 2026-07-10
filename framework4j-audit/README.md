@@ -132,8 +132,38 @@ CREATE TABLE audit_log (
 ## 自动装配
 
 - `AuditAutoConfiguration` 注册 `AuditService` + `AuditAspect` + `HashChainService`
-- 默认 `InMemoryAuditSink`（开发/测试）
+- **v2.2 自动选 sink**：
+  - 检测到 `DataSource` bean → `JdbcAuditSink`（append-only INSERT 到 `audit.table-name`）
+  - 未检测到 → `InMemoryAuditSink` fallback（开发/测试，重启即丢）
+- 业务方无需任何代码改动 — 配 DataSource + `audit.table-name` 即生效
 - 通过 `framework4j.audit.enabled=false` 关闭
+
+### 生产 DDL（PostgreSQL）
+
+```sql
+CREATE TABLE audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    action VARCHAR(64) NOT NULL,
+    target_type VARCHAR(64) NOT NULL,
+    target_id VARCHAR(64),
+    actor VARCHAR(64),
+    result VARCHAR(16) NOT NULL,
+    error_message TEXT,
+    args_json TEXT,
+    result_json TEXT,
+    ip VARCHAR(45),
+    user_agent VARCHAR(255),
+    trace_id VARCHAR(64),
+    timestamp TIMESTAMPTZ NOT NULL,
+    prev_hash VARCHAR(128) NOT NULL,
+    hash VARCHAR(128) NOT NULL UNIQUE  -- 防同 hash 重复写
+);
+CREATE INDEX idx_audit_target ON audit_log (target_type, target_id);
+CREATE INDEX idx_audit_actor_time ON audit_log (actor, timestamp DESC);
+CREATE INDEX idx_audit_time ON audit_log (timestamp DESC);
+
+-- append-only：DB 用户权限 REVOKE UPDATE, DELETE ON audit_log
+```
 
 ## 相关文档
 

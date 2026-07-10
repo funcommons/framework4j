@@ -3,6 +3,7 @@ package fun.commons.framework4j.sensitive.typehandler;
 import fun.commons.framework4j.sensitive.util.AesGcmCryptoUtil;
 import org.apache.ibatis.type.BaseTypeHandler;
 import org.apache.ibatis.type.JdbcType;
+import org.apache.ibatis.type.MappedTypes;
 
 import java.sql.CallableStatement;
 import java.sql.PreparedStatement;
@@ -16,9 +17,14 @@ import java.sql.SQLException;
  * <p>
  * v2.1 P1: 构造接受 {@code byte[]} keyBytes（由 Spring 派生一次后注入），避免 MyBatis
  * 每个映射字段新建 TypeHandler 实例时重复 SHA-256 派生。
+ * <p>
+ * v2.2 BUG FIX: 显式 {@code @MappedTypes(String.class)} — 避免被 Spring @Bean 隐式注册为
+ * 全局 String handler 后污染所有未指定 typeHandler 的 String 字段（JSONB、email、nickname 等）。
+ * 现在必须显式 {@code @TableField(typeHandler = EncryptedFieldTypeHandler.class)} 才生效。
  *
  * @since 2.1.0
  */
+@MappedTypes(String.class)
 public class EncryptedFieldTypeHandler extends BaseTypeHandler<String> {
 
     private final byte[] keyBytes;

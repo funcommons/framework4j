@@ -204,6 +204,16 @@ class TraceIdDruidFilterTest {
         assertEquals("EXPLAIN SELECT * FROM users", invokeProcessSql(f, "EXPLAIN SELECT * FROM users"));
     }
 
+    @Test
+    @DisplayName("v2.2 P1: WRITE_ONLY 模式：CTE 开头（WITH ... AS）也按读操作跳过")
+    void writeOnlyModeSkipsCte() {
+        // v2.2 修复前：CTE 开头（WITH）原 isReadOperation 未匹配，被当写操作注入了 traceid
+        // v2.2 修复后：识别为读操作，WRITE_ONLY 模式跳过
+        TraceIdDruidFilter f = filter(() -> TRACE_ID, SqlTracingProperties.TracingMode.WRITE_ONLY);
+        String cte = "WITH active_users AS (SELECT * FROM users WHERE status='ACTIVE') SELECT * FROM active_users";
+        assertEquals(cte, invokeProcessSql(f, cte));
+    }
+
     /**
      * 通过反射调用 private processSql，避免构造完整 FilterChain。
      */

@@ -1,0 +1,6 @@
+com.ldx2t.commons.id.config.IdSdkAutoConfiguration
+com.ldx2t.commons.api.TraceConfig
+com.ldx2t.commons.api.GlobalExceptionHandler
+com.ldx2t.commons.core.config.WebConfig
+com.ldx2t.commons.openid.config.OpenIdSwaggerConfig
+com.ldx2t.commons.openid.config.OpenIdSwaggerModelConfig
