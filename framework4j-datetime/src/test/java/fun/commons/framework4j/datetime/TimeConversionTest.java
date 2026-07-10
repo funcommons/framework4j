@@ -108,11 +108,12 @@ class TimeConversionTest {
 
     @Test @DisplayName("不同时区同一时刻")
     void sameInstantDifferentZone() {
-        Instant now = Instant.now();
-        OffsetDateTime utc = now.atOffset(ZoneOffset.UTC);
-        OffsetDateTime cst = now.atOffset(ZoneOffset.ofHours(8));
+        // 用固定时间避免 UTC hour+8 >= 24 时 flaky
+        Instant fixed = Instant.parse("2024-06-15T10:00:00Z");
+        OffsetDateTime utc = fixed.atOffset(ZoneOffset.UTC);
+        OffsetDateTime cst = fixed.atOffset(ZoneOffset.ofHours(8));
         assertThat(utc.toInstant()).isEqualTo(cst.toInstant());
-        assertThat(cst.getHour()).isEqualTo(utc.getHour() + 8);
+        assertThat(cst.getHour()).isEqualTo((utc.getHour() + 8) % 24);
     }
 
     @Test @DisplayName("OffsetDateTime isAfter / isBefore 边界")
