@@ -57,6 +57,11 @@ public class DataSourceProperties {
     private MybatisPlusConfig mybatisPlus = new MybatisPlusConfig();
 
     /**
+     * MyBatis Plus 内置插件配置
+     */
+    private MybatisPlusPluginsConfig mybatisPlusPlugins = new MybatisPlusPluginsConfig();
+
+    /**
      * SQL 追踪配置
      */
     private SqlTracingProperties sqlTracing = new SqlTracingProperties();
@@ -102,5 +107,32 @@ public class DataSourceProperties {
          * e.g. classpath:mybatis-config.xml
          */
         private String configLocation;
+    }
+
+    /**
+     * MyBatis Plus 内置插件配置
+     */
+    @Data
+    public static class MybatisPlusPluginsConfig {
+        /** 总开关，默认 true */
+        private boolean enabled = true;
+
+        /** 分页插件，默认 true */
+        private boolean pagination = true;
+        /** 分页 DbType，默认 null（自动检测） */
+        private String dbType;
+
+        /** 乐观锁插件，默认 false（需 Entity @Version） */
+        private boolean optimisticLock = false;
+
+        /** 防全表更新/删除插件，默认 true */
+        private boolean blockAttack = true;
+
+        /** 多租户插件，默认 false（需租户上下文） */
+        private boolean dataPermission = false;
+        /** 多租户字段名 */
+        private String tenantColumn = "tenant_id";
+        /** 多租户忽略表 */
+        private String[] tenantIgnoreTables;
     }
 }

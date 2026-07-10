@@ -249,3 +249,123 @@ A：能。本模块只负责数据源切换，不干预 MyBatis Plus 的实体�
 
 **Q5：`druid` 监控页能看每个数据源吗？**
 A：能。`/druid/datasource.html` 列出所有数据源。每数据源独立配置 `stat-view-servlet` 白名单 + 凭证（见 mc-java-spec §4.4.4）。
+
+## MyBatis Plus 内置插件
+
+framework4j 内置 MyBatis Plus 常用拦截器，yml 开关控制，零代码。
+
+### 默认策略
+
+| 插件 | 默认 | 理由 |
+|---|---|---|
+| **分页**（PaginationInnerInterceptor） | ✅ 加载 | 只在传 `IPage` 参数时激活，对无分页透明 |
+| **防全表更新**（BlockAttackInnerInterceptor） | ✅ 加载 | 安全护栏，防 UPDATE/DELETE 不带 WHERE |
+| **乐观锁**（OptimisticLockerInnerInterceptor） | ❌ 不加载 | 需 Entity `@Version` 字段 |
+| **多租户**（TenantLineInnerInterceptor） | ❌ 不加载 | 需租户上下文基础设施 |
+
+### yml 配置
+
+```yaml
+framework4j:
+  datasource:
+    datasources:
+      default:
+        url: jdbc:postgresql://localhost/mydb
+        mybatis-plus-plugins:
+          enabled: true              # 总开关（默认 true）
+          pagination: true           # 分页（默认 true）
+          db-type: POSTGRE_SQL       # 指定 DbType（默认自动检测）
+          block-attack: true         # 防全表更新（默认 true）
+          optimistic-lock: true      # 开启乐观锁（默认 false）
+          data-permission: true      # 开启多租户（默认 false）
+          tenant-column: tenant_id
+          tenant-ignore-tables: [sys_config, sys_dict]
+```
+
+### 关闭内置插件（全自定义）
+
+```yaml
+framework4j:
+  datasource:
+    datasources:
+      default:
+        mybatis-plus-plugins:
+          enabled: false  # 关闭 SDK 默认，用自定义 Bean
+```
+
+### 用户自定义覆盖
+
+```java
+@Configuration
+public class MyInterceptorConfig {
+    @Bean
+    public MybatisPlusInterceptor mybatisPlusInterceptor() {
+        // SDK 的默认 Bean 自动退让（@ConditionalOnMissingBean）
+        MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+        interceptor.addInnerInterceptor(new PaginationInnerInterceptor(DbType.MYSQL));
+        interceptor.addInnerInterceptor(new OptimisticLockerInnerInterceptor());
+        // 加自定义拦截器
+        interceptor.addInnerInterceptor(new MyCustomInterceptor());
+        return interceptor;
+    }
+}
+```
+
+### 多数据源不同 DbType
+
+多数据源共用一个 `MybatisPlusInterceptor`（MyBatis Plus 设计）。不同 DbType 时需自定义：
+
+```java
+@Bean
+public MybatisPlusInterceptor mybatisPlusInterceptor() {
+    MybatisPlusInterceptor interceptor = new MybatisPlusInterceptor();
+    // 用不指定 DbType 的分页（自动检测每个数据源）
+    PaginationInnerInterceptor page = new PaginationInnerInterceptor();
+    interceptor.addInnerInterceptor(page);
+    return interceptor;
+}
+```
+
+### 多租户方案
+
+```java
+@Bean
+public TenantLineHandler tenantLineHandler() {
+    return new TenantLineHandler() {
+        @Override
+        public Expression getTenantId() {
+            Long tenantId = TenantContext.get(); // 从 ThreadLocal / TokenContext 取
+            return new LongValue(tenantId);
+        }
+        @Override
+        public String getTenantIdColumn() { return "tenant_id"; }
+        @Override
+        public boolean ignoreTable(String tableName) {
+            return "sys_config".equals(tableName); // 忽略全局配置表
+        }
+    };
+}
+```
+
+## 📚 文档导航
+
+### 按「我想做什么」找文档
+
+| 我想… | 看这个文档 |
+|---|---|
+| 快速上手多数据源 | 本 README（当前页） |
+| 了解核心特性与场景 | [特性与场景](./DESIGN-FEATURES.md) |
+| 查配置项含义 | [配置说明](./DESIGN-CONFIG.md) |
+| 学注入方式（@DataSourceOn 等） | [使用指南](./DESIGN-USAGE.md) |
+| 连接池调优 / MyBatis Plus 最佳实践 | [最佳实践](./DESIGN-BEST-PRACTICES.md) |
+| 排查常见问题 / Druid 监控 | [FAQ 与监控](./DESIGN-FAQ.md) |
+| 看测试覆盖 | [测试文档](./TESTING.md) |
+| SQL trace_id 追踪 | `framework4j-sql-tracing/README.md` |
+
+### 按角色找文档
+
+| 角色 | 推荐阅读 |
+|---|---|
+| 新人 | 本 README → DESIGN-FEATURES → DESIGN-USAGE |
+| 架构师 | DESIGN-FEATURES → DESIGN-CONFIG → DESIGN-BEST-PRACTICES |
+| 运维 | DESIGN-CONFIG → DESIGN-BEST-PRACTICES → DESIGN-FAQ |

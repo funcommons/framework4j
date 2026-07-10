@@ -268,3 +268,17 @@ A：`@RedisOn` 支持类级 + 字段级 + `strict` 回退；`@Qualifier` 仅字�
 
 **Q5：动态添加数据源失败会回滚吗？**
 A：会。`addDataSource` 内部原子注册（template + redisson 同时成功才算成功）。Redisson 失败时回滚已注册的 template + 销毁连接工厂。
+
+## 相关文档
+
+- [产品设计文档](./DESIGN.md) — 多 Redis 数据源注入器架构
+- [@RedisOn 注解设计](./DESIGN-ANNOTATION.md) — 注解注入器 BeanPostProcessor 设计
+
+## 📚 文档导航
+
+| 我想… | 看这个文档 |
+|---|---|
+| 了解核心特性 | [特性与场景](./DESIGN-FEATURES.md) |
+| 查配置项 | [配置说明](./DESIGN-CONFIG.md) |
+| 学注入方式 | [使用指南](./DESIGN-USAGE.md) |
+| @RedisOn 注解原理 | [注解设计文档](./DESIGN-ANNOTATION.md) |

@@ -43,7 +43,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.1.0</version>
+    <version>v1.1.1</version>
 </dependency>
 ```
 

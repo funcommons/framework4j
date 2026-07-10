@@ -39,6 +39,28 @@ public class OrderService {
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-datasource</artifactId>
-    <version>v1.0.0</version>
+    <version>v1.1.1</version>
 </dependency>
 ```
+
+## MyBatis Plus 内置插件
+
+| 插件 | 默认 | 开启方式 |
+|---|---|---|
+| 分页 | ✅ 加载 | 默认 |
+| 防全表更新 | ✅ 加载 | 默认 |
+| 乐观锁 | ❌ | `mybatis-plus-plugins.optimistic-lock: true` |
+| 多租户 | ❌ | `mybatis-plus-plugins.data-permission: true` + TenantLineHandler Bean |
+
+```yaml
+framework4j:
+  datasource:
+    datasources:
+      default:
+        mybatis-plus-plugins:
+          pagination: true
+          block-attack: true
+          optimistic-lock: true
+```
+
+用户自定义 → `@Bean MybatisPlusInterceptor`（SDK 自动退让）

@@ -155,3 +155,13 @@ public Config getConfig(String key) { ... }
 ```
 
 默认 `nullTtl=30` 秒（全局 `framework4j.cache.null-ttl-seconds`），注解级覆盖优先。
+
+## 相关文档
+
+- [缓存设计文档](./DESIGN.md) — L1/L2 架构、单飞防击穿、TTL 抖动防雪崩、Pub/Sub 广播
+
+## 📚 文档导航
+
+| 我想… | 看这个文档 |
+|---|---|
+| L1/L2 架构 / 单飞 / 防雪崩 | [缓存设计文档](./DESIGN.md) |

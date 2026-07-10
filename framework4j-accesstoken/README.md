@@ -343,3 +343,20 @@ int revoked = generator.revokeByUser("WEB", "user-123");
 ```
 
 适用场景：密码修改后强制重登录 / 管理员封禁用户 / 安全事件应急。
+
+## 相关文档
+
+- [用户指南](./GUIDE.md) — 完整功能说明 + 配置参考
+- [快速开始](./QUICKSTART.md) — 5 分钟集成
+- [测试文档](./TESTING.md) — 测试场景与覆盖率
+
+## 📚 文档导航
+
+| 我想… | 看这个文档 |
+|---|---|
+| 5 分钟接入 | [快速开始](./QUICKSTART.md) |
+| 完整功能概览 | [用户指南-概览](./GUIDE-OVERVIEW.md) |
+| 配置项详解 | [用户指南-配置](./GUIDE-CONFIG.md) |
+| Refresh 家族 / 高级特性 | [用户指南-进阶](./GUIDE-ADVANCED.md) |
+| 常见问题 / 错误码 | [用户指南-FAQ](./GUIDE-FAQ.md) |
+| 测试场景 | [测试文档](./TESTING.md) |

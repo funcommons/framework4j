@@ -69,6 +69,71 @@ public class MultiDataSourceAutoConfiguration {
     // SqlTracingAutoConfiguration 已独立注册到 AutoConfiguration.imports
     // 主开关：framework4j.datasource.sql-tracing.enabled（默认 true）
 
+    /**
+     * MyBatis Plus 内置插件自动装配（方案 C）
+     * <p>默认加载分页 + 防全表更新；乐观锁 / 多租户需 yml 开启。
+     * <p>用户自定义 {@code @Bean MybatisPlusInterceptor} 时自动退让（{@code @ConditionalOnMissingBean}）。
+     */
+    @org.springframework.context.annotation.Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(
+            type = "com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnClass(
+            name = "com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor")
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnProperty(
+            prefix = "framework4j.datasource", name = "enabled", havingValue = "true")
+    public com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor framework4jMybatisPlusInterceptor(
+            MultiDataSourcePropertiesContainer container) {
+        DataSourceProperties.MybatisPlusPluginsConfig cfg = null;
+        // 从 datasources.default 取插件配置（全局生效）
+        DataSourceProperties defaultDs = container.getDatasources().get("default");
+        if (defaultDs != null) {
+            cfg = defaultDs.getMybatisPlusPlugins();
+        }
+        if (cfg == null) {
+            cfg = new DataSourceProperties.MybatisPlusPluginsConfig();
+        }
+
+        com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor interceptor =
+                new com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor();
+
+        // 1. 分页（默认 true）
+        if (cfg.isPagination()) {
+            com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor page =
+                    new com.baomidou.mybatisplus.extension.plugins.inner.PaginationInnerInterceptor();
+            if (cfg.getDbType() != null && !cfg.getDbType().isEmpty()) {
+                try {
+                    page.setDbType(com.baomidou.mybatisplus.annotation.DbType.valueOf(cfg.getDbType()));
+                } catch (IllegalArgumentException e) {
+                    log.warn("【Multi-DataSource】MyBatis Plus db-type={} 无效，用自动检测", cfg.getDbType());
+                }
+            }
+            interceptor.addInnerInterceptor(page);
+            log.info("【Multi-DataSource】MyBatis Plus 分页插件已加载（dbType={}）",
+                    cfg.getDbType() != null ? cfg.getDbType() : "auto");
+        }
+
+        // 2. 防全表更新（默认 true）
+        if (cfg.isBlockAttack()) {
+            interceptor.addInnerInterceptor(
+                    new com.baomidou.mybatisplus.extension.plugins.inner.BlockAttackInnerInterceptor());
+            log.info("【Multi-DataSource】MyBatis Plus 防全表更新插件已加载");
+        }
+
+        // 3. 乐观锁（默认 false）
+        if (cfg.isOptimisticLock()) {
+            interceptor.addInnerInterceptor(
+                    new com.baomidou.mybatisplus.extension.plugins.inner.OptimisticLockerInnerInterceptor());
+            log.info("【Multi-DataSource】MyBatis Plus 乐观锁插件已加载");
+        }
+
+        // 4. 多租户（默认 false）— 仅注册拦截器框架，业务方需提供 TenantLineHandler Bean
+        if (cfg.isDataPermission()) {
+            log.warn("【Multi-DataSource】MyBatis Plus 多租户已开启，业务方需自行注册 TenantLineHandler Bean 提供 tenantId");
+        }
+
+        return interceptor;
+    }
+
     @Data
     @ConfigurationProperties(prefix = "framework4j.datasource")
     public static class MultiDataSourcePropertiesContainer {

@@ -39,45 +39,96 @@ const docsModulesDir = join(root, 'docs', 'modules');
 const distDir = join(root, 'docs', '.vitepress', 'dist');
 const targetDir = join(root, 'framework4j-demo', 'src', 'main', 'resources', 'static');
 
-// === Step 1: 复制 README → docs/modules ===
-console.log('\n📝 Step 1: 复制模块 README → docs/modules/');
+// === Step 1: 复制模块所有 .md → docs/modules ===
+console.log('\n📝 Step 1: 复制模块文档 → docs/modules/');
 mkdirSync(docsModulesDir, { recursive: true });
+
+// 转义函数：代码块外的 XML/HTML 标签转义
+function escapeNonCodeBlocks(content) {
+  const parts = content.split(/(```[\s\S]*?```)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('```')) return part;
+    return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }).join('');
+}
+
 for (const [name, readmePath] of Object.entries(modules)) {
   const src = join(root, readmePath);
   const dest = join(docsModulesDir, `${name}.md`);
   if (existsSync(src)) {
     try { rmSync(dest); } catch {}
-    // 转义代码块外的 XML/HTML 标签（防 Vue 误解析），代码块内保持原样
     const content = readFileSync(src, 'utf-8');
-    const parts = content.split(/(```[\s\S]*?```)/g);
-    const processed = parts.map((part, i) => {
-      if (part.startsWith('```')) return part; // 代码块不动
-      return part.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }).join('');
-    writeFileSync(dest, processed);
+    writeFileSync(dest, escapeNonCodeBlocks(content));
     console.log(`  ✅ ${name}.md`);
+
+    // 复制同目录下其他 .md 文档（非 README.md）
+    const modDir = dirname(src);
+    for (const file of readdirSync(modDir)) {
+      if (!file.endsWith('.md') || file === 'README.md') continue;
+      const extraSrc = join(modDir, file);
+      const extraDest = join(docsModulesDir, `${name}-${file.replace(/\.md$/, '').toLowerCase().replace(/\s+/g, '-')}.md`);
+      const extraContent = readFileSync(extraSrc, 'utf-8');
+      writeFileSync(extraDest, escapeNonCodeBlocks(extraContent));
+      console.log(`  ✅ ${name}-${file.replace(/\.md$/, '').toLowerCase().replace(/\s+/g, '-')}.md`);
+    }
   } else {
     console.log(`  ⚠️  ${name}.md (README not found: ${readmePath})`);
   }
 }
 
-// === Step 1b: 复制 skills/SKILL.md → docs/skills/ ===
+// === Step 1b: 复制 skills/SKILL.md → docs/skills/ + 同步模块 README → skills/README.md ===
 const docsSkillsDir = join(root, 'docs', 'skills');
 mkdirSync(docsSkillsDir, { recursive: true });
 const skillsDir = join(root, 'skills');
 if (existsSync(skillsDir)) {
-  console.log('\n📝 Step 1b: 复制 skills/SKILL.md → docs/skills/');
+  console.log('\n📝 Step 1b: 同步 skill 文档 + 复制到 docs/skills/');
+
+  // skill 名称 → 模块名称 映射
+  const skillToModule = {
+    'fwk4j-api': 'framework4j-api',
+    'fwk4j-web': 'framework4j-web',
+    'fwk4j-accesstoken': 'framework4j-accesstoken',
+    'fwk4j-signature': 'framework4j-signature',
+    'fwk4j-rate-limit': 'framework4j-rate-limit',
+    'fwk4j-cache': 'framework4j-cache',
+    'fwk4j-audit': 'framework4j-audit',
+    'fwk4j-sensitive': 'framework4j-sensitive',
+    'fwk4j-idempotency': 'framework4j-idempotency',
+    'fwk4j-redis': 'framework4j-redis',
+    'fwk4j-datasource': 'framework4j-datasource',
+    'fwk4j-sql-tracing': 'framework4j-sql-tracing',
+    'fwk4j-id': 'framework4j-id',
+    'fwk4j-datetime': 'framework4j-datetime',
+    'fwk4j-sdk': null, // 总入口无对应模块
+  };
+
   for (const dir of readdirSync(skillsDir)) {
     if (!dir.startsWith('fwk4j-')) continue;
+
+    // 1b-1: SKILL.md → docs/skills/（去 frontmatter）
     const skillFile = join(skillsDir, dir, 'SKILL.md');
     if (existsSync(skillFile)) {
       const content = readFileSync(skillFile, 'utf-8');
-      // 去掉 frontmatter（VitePress 不需要）
       const body = content.replace(/^---[\s\S]*?---\n/, '');
       const dest = join(docsSkillsDir, `${dir}.md`);
       writeFileSync(dest, body);
-      console.log(`  ✅ ${dir}.md`);
     }
+
+    // 1b-2: 模块所有 .md → skills/{dir}/（README.md + 额外文档同步）
+    const moduleName = skillToModule[dir];
+    if (moduleName) {
+      const modDir = join(root, moduleName);
+      if (existsSync(modDir)) {
+        for (const file of readdirSync(modDir)) {
+          if (!file.endsWith('.md')) continue;
+          const src = join(modDir, file);
+          const dest = join(skillsDir, dir, file);
+          copyFileSync(src, dest);
+        }
+      }
+    }
+
+    console.log(`  ✅ ${dir}/ (SKILL.md + 全部 .md)`);
   }
 }
 

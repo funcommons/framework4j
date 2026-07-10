@@ -210,3 +210,18 @@ A：会。Filter 用 `startsWith` 检测 `(SELECT` / `( SELECT` / `SHOW` / `DESC
 
 **Q5：怎么禁用某个数据源的追踪？**
 A：`framework4j.datasource.datasources.<name>.sql-tracing.mode=DISABLED`。或全局禁用：`framework4j.datasource.sql-tracing.enabled=false`。
+
+## 相关文档
+
+- [SQL 追踪设计方案](./DESIGN.md) — Spring Boot 3 + Micrometer 全链路 SQL 追踪方案
+- [疑难解答](./TROUBLESHOOTING.md) — TraceID 常见问题与排障指南
+
+## 📚 文档导航
+
+| 我想… | 看这个文档 |
+|---|---|
+| 了解架构设计 | [架构设计](./DESIGN-ARCHITECTURE.md) |
+| 看代码实现 | [实现详解](./DESIGN-IMPLEMENTATION.md) |
+| 运维与性能 | [运维指南](./DESIGN-OPERATIONS.md) |
+| TraceID 没出现 | [诊断指南](./TROUBLESHOOTING-DIAGNOSTIC.md) |
+| FAQ | [常见问题](./TROUBLESHOOTING-FAQ.md) |
