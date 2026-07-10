@@ -28,6 +28,7 @@
         <module>framework4j-cache</module>
         <module>framework4j-audit</module>
         <module>framework4j-sensitive</module>
+        <module>framework4j-compat-test</module>
         <module>framework4j-all</module>
     </modules>
 
@@ -356,6 +357,33 @@
                                         </limits>
                                     </rule>
                                 </rules>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- v2.2: Maven Enforcer 依赖冲突检测（防 jsqlparser 类版本冲突） -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>3.4.1</version>
+                    <executions>
+                        <execution>
+                            <id>enforce-dependency-rules</id>
+                            <goals><goal>enforce</goal></goals>
+                            <configuration>
+                                <rules>
+                                    <dependencyConvergence/>
+                                    <requireUpperBoundDeps/>
+                                    <bannedDependencies>
+                                        <excludes>
+                                            <exclude>com.alibaba:fastjson2</exclude>
+                                            <exclude>com.alibaba:fastjson</exclude>
+                                        </excludes>
+                                        <message>禁用 fastjson/fastjson2（autotype RCE 风险，统一用 Jackson）</message>
+                                    </bannedDependencies>
+                                </rules>
+                                <fail>true</fail>
                             </configuration>
                         </execution>
                     </executions>

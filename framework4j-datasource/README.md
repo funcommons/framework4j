@@ -369,3 +369,36 @@ public TenantLineHandler tenantLineHandler() {
 | 新人 | 本 README → DESIGN-FEATURES → DESIGN-USAGE |
 | 架构师 | DESIGN-FEATURES → DESIGN-CONFIG → DESIGN-BEST-PRACTICES |
 | 运维 | DESIGN-CONFIG → DESIGN-BEST-PRACTICES → DESIGN-FAQ |
+
+## ⚠️ 已知依赖冲突与解决方案
+
+### jsqlparser 版本冲突（v1.1.1 已修复）
+
+**问题**：MyBatis-Plus 3.5.9+ 将分页拦截器拆到 `mybatis-plus-jsqlparser` 模块，该模块依赖 `jsqlparser:5.x`。如果 framework4j 硬传递此依赖，会覆盖旧版 MyBatis-Plus（≤3.5.8）需要的 `jsqlparser:4.x`，导致 `NoClassDefFoundError`。
+
+**framework4j 的修复**（v1.1.2+）：`mybatis-plus-jsqlparser` 设为 `optional=true`，不传递给消费者。
+
+**消费者使用内置插件**：
+
+```xml
+<!-- 需要用 framework4j 内置分页插件时，自行引入（版本与你的 mybatis-plus 对齐） -->
+<dependency>
+    <groupId>com.baomidou</groupId>
+    <artifactId>mybatis-plus-jsqlparser</artifactId>
+    <version>${mybatis-plus.version}</version> <!-- 如 3.5.5 对应 jsqlparser 4.6 -->
+</dependency>
+```
+
+**不用内置插件**（自己写 `@Bean MybatisPlusInterceptor`）→ 无需引入。
+
+**多版本共存检查**：framework4j 提供兼容性测试模块 `framework4j-compat-test`，自动验证旧版生态依赖不冲突。
+
+### 通用依赖冲突排查
+
+```bash
+# 查看实际 classpath 中的依赖树
+mvn dependency:tree | grep jsqlparser
+
+# Maven Enforcer 自动检测冲突
+mvn enforcer:enforce -Drules=dependencyConvergence
+```

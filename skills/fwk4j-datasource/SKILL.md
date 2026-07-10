@@ -82,3 +82,10 @@ framework4j:
 ```
 
 用户自定义 → `@Bean MybatisPlusInterceptor`（SDK 自动退让）
+
+## ⚠️ 依赖冲突注意事项
+
+- `mybatis-plus-jsqlparser` 为 optional 依赖，不传递
+- 消费者需内置分页插件时自行引入（版本与 mybatis-plus 对齐）
+- jsqlparser 4.x ↔ 5.x 不兼容（包路径重构），禁止混用
+- framework4j-compat-test 模块自动验证旧版兼容性

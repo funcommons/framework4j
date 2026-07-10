@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fun.commons</groupId>
+        <artifactId>framework4j</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>framework4j-compat-test</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Commons Compat Test</name>
+    <description>消费者兼容性测试 — 模拟旧版生态依赖与 framework4j 共存，检测传递依赖冲突</description>
+
+    <!-- 故意不继承父 pom 的 dependencyManagement 版本，模拟客户自定义版本 -->
+    <properties>
+        <mybatis-plus-test.version>3.5.5</mybatis-plus-test.version>
+    </properties>
+
+    <dependencies>
+        <!-- framework4j 被测对象 -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-datasource</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- 模拟客户：旧版 MyBatis Plus（故意不引 mybatis-plus-jsqlparser） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>${mybatis-plus-test.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- jsqlparser: 客户自行选择版本（模拟 4.x 环境） -->
+        <dependency>
+            <groupId>com.github.jsqlparser</groupId>
+            <artifactId>jsqlparser</artifactId>
+            <version>4.6</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+</project>

@@ -873,3 +873,56 @@ hash = SHA256(prev_hash || TreeMap(action, targetType, targetId, actor, result, 
 | 1.0 | 2026-07-06 | 初版，由 framework4j SDK 9 轮审计（87 项修复）提炼 |
 | 1.1 | 2026-07-08 | 加 §15 Web / §16 HMAC 签名 / §17 限流（第一梯队 3 模块交付） |
 | 1.2 | 2026-07-09 | 加 §18 多级缓存 / §19 审计日志 / §20 字段脱敏加密（第二梯队 3 模块交付） |
+
+---
+
+## 22. SDK 依赖管理规范
+
+> v2.2 新增。基于 v1.1.1 jsqlparser 5.x 冲突 P0 事故提炼。
+
+### 22.1 optional 铁律（P0）
+
+**非核心依赖（<100% 用户需要）一律 `<optional>true</optional>`**：
+
+```xml
+<!-- ❌ 硬依赖：传递 jsqlparser:5.2 给所有消费者，覆盖旧版 -->
+<dependency>
+    <groupId>com.baomidou</groupId>
+    <artifactId>mybatis-plus-jsqlparser</artifactId>
+</dependency>
+
+<!-- ✅ optional：不传递，消费者按需引入 -->
+<dependency>
+    <groupId>com.baomidou</groupId>
+    <artifactId>mybatis-plus-jsqlparser</artifactId>
+    <optional>true</optional>
+</dependency>
+```
+
+### 22.2 新增依赖必须过审（P0）
+
+新增 compile scope 依赖前填写 `dependency-checklist.md`：
+1. 是否核心依赖？→ 否则 optional
+2. 传递了哪些二级依赖？
+3. 二级依赖与旧版生态兼容？
+4. 是否有 exclusion 需要？
+
+### 22.3 破坏性版本升级识别（P0）
+
+| 升级类型 | 示例 | 风险 |
+|---|---|---|
+| **大版本跳**（4.x→5.x） | jsqlparser 4→5（包路径全改） | 🔴 P0 |
+| **包名重构** | javax→jakarta | 🔴 P0 |
+| **API 删除** | fastjson2→Jackson | 🟠 P1 |
+| **小版本兼容** | 3.5.5→3.5.14 | ✅ 低风险 |
+
+### 22.4 Maven Enforcer 强制检查（P1）
+
+父 pom 配置 `maven-enforcer-plugin`：
+- `dependencyConvergence`：同一 artifact 多版本时 BUILD FAILURE
+- `bannedDependencies`：禁止 fastjson/fastjson2
+- `requireUpperBoundDeps`：禁止版本降级
+
+### 22.5 兼容性测试模块（P1）
+
+`framework4j-compat-test` 模块：故意引入旧版生态依赖 + framework4j，验证共存不崩。
