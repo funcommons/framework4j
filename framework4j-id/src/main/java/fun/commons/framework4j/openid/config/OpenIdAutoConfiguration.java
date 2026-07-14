@@ -54,7 +54,7 @@ public class OpenIdAutoConfiguration {
     }
 
     @Bean
-    public WebMvcConfigurer framework4jOpenIdWebMvcConfigurer() {
+    public static WebMvcConfigurer framework4jOpenIdWebMvcConfigurer() {
         return new WebMvcConfigurer() {
             @Override
             public void addFormatters(FormatterRegistry registry) {

@@ -65,7 +65,7 @@ public class MultiRedisAutoConfiguration {
     }
 
     @Bean
-    public RedisOnBeanPostProcessor redisOnBeanPostProcessor(MultiRedisManager manager, Environment environment) {
+    public static RedisOnBeanPostProcessor redisOnBeanPostProcessor(MultiRedisManager manager, Environment environment) {
         RedisOnBeanPostProcessor processor = new RedisOnBeanPostProcessor(manager);
         processor.setEnvironment(environment);
         log.info("【Multi-Redis】redisOnBeanPostProcessor，@RedisOn注解处理器，支持类级别和字段级别的Redis数据源自动注入");

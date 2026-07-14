@@ -29,7 +29,7 @@ import org.springframework.context.annotation.Bean;
 public class SqlTracingAutoConfiguration {
 
     @Bean
-    public SqlTracingBeanPostProcessor sqlTracingBeanPostProcessor() {
+    public static SqlTracingBeanPostProcessor sqlTracingBeanPostProcessor() {
         log.info("【SQL-Tracing】sqlTracingBeanPostProcessor，Druid Filter 注入 trace_id");
         return new SqlTracingBeanPostProcessor();
     }

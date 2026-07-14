@@ -60,7 +60,7 @@ import java.util.*;
 public class MultiDataSourceAutoConfiguration {
 
     @Bean
-    public DataSourceOnBeanPostProcessor dataSourceOnBeanPostProcessor(MultiDataSourceManager manager) {
+    public static DataSourceOnBeanPostProcessor dataSourceOnBeanPostProcessor(MultiDataSourceManager manager) {
         DataSourceOnBeanPostProcessor processor = new DataSourceOnBeanPostProcessor(manager);
         log.info("【Multi-DataSource】dataSourceOnBeanPostProcessor，@DataSourceOn注解处理器，支持类级别和字段级别的数据源自动注入");
         return processor;
