@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-id</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
@@ -84,6 +84,7 @@ public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
 | `framework4j.openid.salt` | `String` | 必填 | HMAC 盐值，环境变量注入 |
 | `framework4j.openid.length` | `int` | `12` | 输出字符长度（11 数据 + 1 校验位） |
 | `framework4j.openid.alphabet` | `String` | `0123456789ABCDEFGHJKMNPQRSTVWXYZ` | 字符表（去除易混字符） |
+| `framework4j.openid.fail-fast` | `boolean` | `true` | v2.2 启动期校验：检测到 `@OpenId @PathVariable` 缺 `-parameters` 立即启动失败（loud &gt; silent） |
 
 ## 4. API 参考
 
@@ -135,6 +136,28 @@ public record OrderVO(
     String amount
 ) {}
 ```
+
+&gt; **v2.2 实现机制**：`@OpenId` 注解本身不带 `@JsonSerialize`（旧版本带，会导致 `framework4j.openid.enabled=false` 时序列化器仍生效，因为 Jackson 字段级注解走静态反射，绕过 Spring 容器）。当前实现是 `OpenIdAutoConfiguration` 通过 `OpenIdBeanSerializerModifier` 动态扫描 `@OpenId` 字段并应用序列化器。关闭 `framework4j.openid.enabled=false` 时，modifier 不注册，`@OpenId Long` 字段按普通 Long 序列化（走 framework4j-web 的 Long→String 输出数字字符串）。
+&gt;
+&gt; **入参还原**（`OpenIdFormatterFactory`）同样受开关控制 —— 关闭后 `@OpenId Long` 入参不再自动从 12 字符串还原，需消费方自行处理。
+
+### `@OpenId @PathVariable` 入参还原（v2.2 修复 GitHub Issue #1）
+
+v2.1 及之前的版本：`@OpenId @PathVariable Long id` 依赖 Spring `MethodParameter.getParameterName()` 反射，要求消费方 Maven 编译加 `&lt;parameters&gt;true&lt;/parameters&gt;`，否则在收到非数字 OpenID 字符串路径请求时**静默失败**（被 framework4j-web 包成 HTTP 200 + `code=10106 BUSINESS_RULE_ERROR`）。
+
+v2.2 修复：新增 `OpenIdPathVariableArgumentResolver`，直接从 `HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE` 读 path 变量值，跳过 parameter name 反射。该 resolver 通过 BeanPostProcessor 前置注入到 `RequestMappingHandlerAdapter`，确保优先于内置 `PathVariableMethodArgumentResolver` 生效。
+
+```java
+// ✓ 不再要求消费方加 -parameters
+@GetMapping("/v1/users/{id}")
+public ApiResponse<UserVO> getUser(@OpenId @PathVariable("id") Long id) { ... }
+
+// ⚠️ 未显式 name + 缺 -parameters 仍会失败，但 v2.2 启动期 fail-fast 会立刻报清楚
+@GetMapping("/v1/users/{id}")
+public ApiResponse<UserVO> getUser(@OpenId @PathVariable Long id) { ... }
+```
+
+启动期 fail-fast 校验（`framework4j.openid.fail-fast=true`，默认开）：扫描所有 controller，发现 `@OpenId @PathVariable` 无法解析参数名时立即 fail，提示加 `&lt;parameters&gt;true&lt;/parameters&gt;` 或显式 `@PathVariable("name")`。把 silent production failure 变成 loud startup failure。
 
 ### `OpenIdTypeHandler`（MyBatis）
 

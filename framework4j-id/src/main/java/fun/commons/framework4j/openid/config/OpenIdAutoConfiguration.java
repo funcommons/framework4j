@@ -44,12 +44,12 @@ public class OpenIdAutoConfiguration {
     public Jackson2ObjectMapperBuilderCustomizer framework4jOpenIdJacksonCustomizer() {
         return builder -> {
             SimpleModule openIdModule = new SimpleModule();
-            // v2.1 修复：不全局注册 Long.class（会覆盖 api 模块的 Long→String 策略）。
-            // OpenIdJsonSerializer 通过 @JsonSerialize(using=...) 字段级注解生效，
-            // 由 OpenIdAnnotationIntrospector 自动应用到 @OpenId 字段。
-            openIdModule.addSerializer(new OpenIdJsonSerializer());
+            // v2.2: 通过 BeanSerializerModifier 扫描 @OpenId 字段，应用 OpenIdJsonSerializer。
+            // 替代旧的 @JsonSerialize 字段级注解方案 —— 后者是静态反射，绕过 Spring 容器，
+            // 导致 framework4j.openid.enabled=false 时序列化器仍生效。
+            openIdModule.setSerializerModifier(new OpenIdBeanSerializerModifier());
             builder.modulesToInstall(openIdModule);
-            log.info("【OpenID】Jackson @OpenId 序列化器已启用（字段级，不覆盖 Long.class）");
+            log.info("【OpenID】Jackson @OpenId 序列化器已启用（BeanSerializerModifier，受开关控制）");
         };
     }
 
@@ -62,6 +62,26 @@ public class OpenIdAutoConfiguration {
                 log.info("【OpenID】OpenIdFormatterFactory 已注册");
             }
         };
+    }
+
+    /**
+     * v2.2：注册前置 ArgumentResolver，处理 {@code @OpenId @PathVariable} 入参还原，
+     * 绕过 Spring {@code MethodParameter.getParameterName()} 反射（要求 javac -parameters）。
+     * <p>
+     * BeanPostProcessor 必须是 static，确保在 {@code RequestMappingHandlerAdapter} 之前实例化。
+     */
+    @Bean
+    public static fun.commons.framework4j.openid.web.OpenIdArgumentResolverRegistrar framework4jOpenIdArgumentResolverRegistrar() {
+        return new fun.commons.framework4j.openid.web.OpenIdArgumentResolverRegistrar();
+    }
+
+    /**
+     * v2.2：启动期 fail-fast 校验，把 silent failure 变成 loud startup failure。
+     */
+    @Bean
+    public fun.commons.framework4j.openid.web.OpenIdFailFastValidator framework4jOpenIdFailFastValidator(
+            org.springframework.context.ApplicationContext applicationContext) {
+        return new fun.commons.framework4j.openid.web.OpenIdFailFastValidator(applicationContext);
     }
 
     /**

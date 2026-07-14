@@ -26,7 +26,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-sensitive</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 

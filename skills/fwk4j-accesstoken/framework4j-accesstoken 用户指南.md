@@ -68,7 +68,7 @@
 <dependency>
     <groupId>com.ldx2t</groupId>
     <artifactId>ldx2t-commons-all</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.1.3</version>
 </dependency>
 ```
 
