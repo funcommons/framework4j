@@ -312,6 +312,8 @@ public class GlobalExceptionHandler {
      *   <li>{@link NumberFormatException} 或消息以 {@code "For input string:"} 开头 → 10102 参数格式错误</li>
      *   <li>消息以 {@code "Name for argument of type"} 开头（反射读不到 parameter name）→
      *       10005 中间件错误（编译配置问题，非业务错误），log.error 并提示加 {@code -parameters}</li>
+     *   <li>消息以 {@code "Invalid @OpenId path variable"} 开头（{@code OpenIdPathVariableArgumentResolver}
+     *       抛的 OpenID 入参格式校验失败）→ 10102 参数格式错误</li>
      *   <li>其它 → 10106 业务规则校验失败（保留 v2.1 行为）</li>
      * </ul>
      */
@@ -331,6 +333,14 @@ public class GlobalExceptionHandler {
             log.error("[编译配置错误] 缺 -parameters 编译选项，导致反射读不到 parameter name: {}", message, e);
             return ApiResponse.fail(ApiCode.MIDDLEWARE_ERROR,
                     "服务端编译配置错误（缺少 -parameters 编译选项），请联系管理员");
+        }
+
+        // v2.2 follow-up: OpenIdPathVariableArgumentResolver 在 OpenID 校验失败时抛 IAE（消息以
+        // "Invalid @OpenId path variable" 开头），从客户端视角这是"URL 拼错"属于参数格式问题，
+        // 不该归到 10106 BUSINESS_RULE_ERROR。
+        if (safeMessage.startsWith("Invalid @OpenId path variable")) {
+            log.warn("[OpenID 路径变量格式错误] {}", message);
+            return ApiResponse.fail(ApiCode.PARAM_FORMAT_ERROR, message);
         }
 
         log.warn("[业务规则校验失败] {}", message);
