@@ -68,6 +68,6 @@ def sign(method, path, body, secret):
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-signature</artifactId>
-    <version>v1.1.1</version>
+    <version>v1.1.3</version>
 </dependency>
 ```

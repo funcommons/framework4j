@@ -306,12 +306,35 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理非法参数异常
+     * <p>
+     * v2.2：按消息特征分流，避免所有 IAE 都包成 10106 BUSINESS_RULE_ERROR（语义模糊）：
+     * <ul>
+     *   <li>{@link NumberFormatException} 或消息以 {@code "For input string:"} 开头 → 10102 参数格式错误</li>
+     *   <li>消息以 {@code "Name for argument of type"} 开头（反射读不到 parameter name）→
+     *       10005 中间件错误（编译配置问题，非业务错误），log.error 并提示加 {@code -parameters}</li>
+     *   <li>其它 → 10106 业务规则校验失败（保留 v2.1 行为）</li>
+     * </ul>
      */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.OK)
     public ApiResponse<?> handleIllegalArgumentException(IllegalArgumentException e) {
-        log.warn("[非法参数异常] {}", e.getMessage());
-        return ApiResponse.fail(ApiCode.BUSINESS_RULE_ERROR, e.getMessage());
+        String message = e.getMessage();
+        String safeMessage = message == null ? "" : message;
+
+        if (e instanceof NumberFormatException
+                || safeMessage.startsWith("For input string:")) {
+            log.warn("[参数格式错误] {}", message);
+            return ApiResponse.fail(ApiCode.PARAM_FORMAT_ERROR, message);
+        }
+
+        if (safeMessage.startsWith("Name for argument of type")) {
+            log.error("[编译配置错误] 缺 -parameters 编译选项，导致反射读不到 parameter name: {}", message, e);
+            return ApiResponse.fail(ApiCode.MIDDLEWARE_ERROR,
+                    "服务端编译配置错误（缺少 -parameters 编译选项），请联系管理员");
+        }
+
+        log.warn("[业务规则校验失败] {}", message);
+        return ApiResponse.fail(ApiCode.BUSINESS_RULE_ERROR, message);
     }
 
     /**

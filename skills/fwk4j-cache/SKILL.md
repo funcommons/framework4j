@@ -90,6 +90,6 @@ framework4j:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-cache</artifactId>
-    <version>v1.1.1</version>
+    <version>v1.1.3</version>
 </dependency>
 ```

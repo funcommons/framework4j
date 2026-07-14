@@ -1,7 +1,5 @@
 package fun.commons.framework4j.openid.annotation;
 
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import fun.commons.framework4j.openid.config.OpenIdAutoConfiguration;
 import java.lang.annotation.*;
 
 /**
@@ -12,13 +10,15 @@ import java.lang.annotation.*;
  * 2. 标记在 Controller 参数上: 指示 Spring MVC 在绑定时自动还原 (String -> Long)。
  * 3. 标记在字段上: 指示 Swagger 将文档类型修正为 String。
  * <p>
- * v2.1: 加 @JsonSerialize(using=...) 字段级注册，不再全局覆盖 Long.class。
+ * v2.2: 移除 @JsonSerialize，改为 OpenIdAutoConfiguration 通过 BeanSerializerModifier
+ * 动态应用序列化器 —— 这样 framework4j.openid.enabled=false 时，序列化也真正关闭。
+ * 旧的 @JsonSerialize 是字段级静态注解，Jackson 反射读取时完全绕过 Spring 容器，
+ * 导致开关失效。
  *
  * @since 1.0.0
  */
 @Target({ElementType.PARAMETER, ElementType.FIELD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@JsonSerialize(using = OpenIdAutoConfiguration.OpenIdJsonSerializer.class)
 public @interface OpenId {
 }

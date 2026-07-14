@@ -4,11 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.0.0-SNAPSHOT`) is a multi-module Spring Boot 3.2 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.1.3`) is a multi-module Spring Boot 3.2 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
-| `framework4j-api` | Unified `ApiResponse`/`ApiCode`, `ApiAssert`, `GlobalExceptionHandler` (all errors → HTTP 200 + business code), `TraceContext`, Jackson WebConfig (snake_case + Long→String) | `framework4j.api.config.enabled` |
+| `framework4j-api` | Unified `ApiCode` enum (error code contract shared by all modules) | — |
+| `framework4j-web` | `ApiResponse`/`ApiAssert`, `GlobalExceptionHandler` (all errors → HTTP 200 + business code), `TraceContext`, Jackson WebConfig (snake_case + Long→String) | `framework4j.web.enabled` + `framework4j.web.jackson.{snake-case,long-to-string,fail-on-unknown-properties}` |
 | `framework4j-datetime` | `OffsetDateTime` serializers + `TimeFormatInterceptor` + converters (split from core in v2.0) | `framework4j.datetime.enabled` |
 | `framework4j-id` | `SnowflakeDistributor` + `WorkerIdStrategy` (Redis-leased / IP-hash), `OpenID` obfuscation (12-char + checksum + TypeHandler + Swagger) (split from core in v2.0) | `framework4j.id.*`, `framework4j.openid.*` |
 | `framework4j-sql-tracing` | `TraceIdDruidFilter` + `DefaultTraceIdProvider` + 3 modes (DISABLED/WRITE_ONLY/ALL) (split from datasource in v2.0) | `framework4j.datasource.sql-tracing.*` |
@@ -86,7 +87,13 @@ If you add new fields that should follow this convention, mark them with the ann
 
 `SnowflakeDistributor` (Hutool Snowflake) is initialized from a `WorkerIdStrategy` (`RedisWorkerIdStrategy` lease-based, default; `IpHashWorkerIdStrategy` as fallback). The epoch is hardcoded to `2024-01-01 UTC+8`. The MyBatis-Plus `IdentifierGenerator` is registered automatically when `framework4j.id.mybatis.enabled=true` (default).
 
-`OpenID` (in `framework4j-id/.../openid/`) uses `IdObfuscator` to convert `Long` ↔ 12-char strings (11 data + 1 checksum). End-to-end conversion is done via `OpenIdTypeHandler` (MyBatis), `@OpenId` field annotations, Jackson `OpenIdJsonSerializer`, and Swagger customizers (`OpenIdSwaggerConfig` / `OpenIdSwaggerModelConfig`). When changing the obfuscator, run the regression suite under `framework4j-id/src/test/java/fun/commons/framework4j/id/` and `.../openid/`.
+`OpenID` (in `framework4j-id/.../openid/`) uses `IdObfuscator` to convert `Long` ↔ 12-char strings (11 data + 1 checksum). End-to-end conversion is done via `OpenIdTypeHandler` (MyBatis), `@OpenId` field annotations, Jackson `OpenIdJsonSerializer` (applied via `OpenIdBeanSerializerModifier`), and Swagger customizers (`OpenIdSwaggerConfig` / `OpenIdSwaggerModelConfig`).
+
+> **v2.2 toggle correctness**: `@OpenId` itself no longer carries `@JsonSerialize` (the old static-field annotation was bypassing Spring's conditional config, so `framework4j.openid.enabled=false` did not actually disable serialization). The serializer is now applied by `OpenIdAutoConfiguration` via `OpenIdBeanSerializerModifier` — so the toggle works. When disabled, `@OpenId Long` fields serialize as plain Long (subject to framework4j-web's Long→String if enabled).
+
+> **v2.2 PathVariable fix (GitHub Issue #1)**: `@OpenId @PathVariable Long id` previously required the `-parameters` javac flag and silently failed without it (mapped to `10106 BUSINESS_RULE_ERROR`). Now `OpenIdAutoConfiguration` registers `OpenIdPathVariableArgumentResolver` via a `BeanPostProcessor` on `RequestMappingHandlerAdapter` (prepended, beats built-in `PathVariableMethodArgumentResolver`). The resolver reads `HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE` directly, bypassing `MethodParameter.getParameterName()` reflection. `OpenIdFailFastValidator` (startup listener, `framework4j.openid.fail-fast=true` default) fails startup if any `@OpenId @PathVariable` can't resolve its name.
+
+When changing the obfuscator, run the regression suite under `framework4j-id/src/test/java/fun/commons/framework4j/id/` and `.../openid/`.
 
 ### AccessToken
 
