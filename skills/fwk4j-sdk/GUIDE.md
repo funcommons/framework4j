@@ -31,6 +31,6 @@ Base directory for this skill: `skills/fwk4j-sdk`
 ## 依赖信息
 
 - **groupId**: `com.github.funcommons.framework4j`
-- **version**: `v1.2.0`（JitPack）
+- **version**: `v1.2.1`（JitPack）
 - **仓库**: `https://jitpack.io`
 - **GitHub**: `https://github.com/funcommons/framework4j`

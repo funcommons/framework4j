@@ -729,7 +729,7 @@ ldx2t:
 <dependency>
     <groupId>com.ldx2t</groupId>
     <artifactId>ldx2t-commons-all</artifactId>
-    <version>1.2.0</version>
+    <version>1.2.1</version>
 </dependency>
 
 <!-- MySQL 驱动 -->

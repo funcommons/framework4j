@@ -286,7 +286,8 @@ public class MultiRedisAutoConfiguration {
             redisConfig.setDatabase(config.getDatabase());
             if (StringUtils.hasText(config.getPassword())) redisConfig.setPassword(RedisPassword.of(config.getPassword()));
 
-            GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+            GenericObjectPoolConfig<io.lettuce.core.api.StatefulConnection<?, ?>> poolConfig =
+                    new GenericObjectPoolConfig<>();
             RedisDataSourceProperties.PoolConfig sourcePool = config.getLettuce().getPool();
             poolConfig.setMaxTotal(sourcePool.getMaxActive());
             poolConfig.setMaxIdle(sourcePool.getMaxIdle());

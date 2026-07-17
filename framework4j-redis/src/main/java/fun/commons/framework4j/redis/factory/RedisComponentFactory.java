@@ -39,7 +39,8 @@ public final class RedisComponentFactory {
             redisConfig.setPassword(RedisPassword.of(config.getPassword()));
         }
 
-        GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+        GenericObjectPoolConfig<io.lettuce.core.api.StatefulConnection<?, ?>> poolConfig =
+                new GenericObjectPoolConfig<>();
         RedisDataSourceProperties.PoolConfig sourcePool = config.getLettuce().getPool();
         poolConfig.setMaxTotal(sourcePool.getMaxActive());
         poolConfig.setMaxIdle(sourcePool.getMaxIdle());
@@ -73,8 +74,9 @@ public final class RedisComponentFactory {
     /**
      * 创建连接池配置（用于 BeanDefinition 注册场景）
      */
-    public static GenericObjectPoolConfig<?> createPoolConfig(RedisDataSourceProperties config) {
-        GenericObjectPoolConfig<?> poolConfig = new GenericObjectPoolConfig<>();
+    public static GenericObjectPoolConfig<io.lettuce.core.api.StatefulConnection<?, ?>> createPoolConfig(RedisDataSourceProperties config) {
+        GenericObjectPoolConfig<io.lettuce.core.api.StatefulConnection<?, ?>> poolConfig =
+                new GenericObjectPoolConfig<>();
         RedisDataSourceProperties.PoolConfig sourcePool = config.getLettuce().getPool();
         poolConfig.setMaxTotal(sourcePool.getMaxActive());
         poolConfig.setMaxIdle(sourcePool.getMaxIdle());
