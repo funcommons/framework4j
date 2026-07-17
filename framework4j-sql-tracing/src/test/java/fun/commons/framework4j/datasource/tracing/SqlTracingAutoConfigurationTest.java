@@ -32,9 +32,8 @@ class SqlTracingAutoConfigurationTest {
     @DisplayName("默认 matchIfMissing=true：自动配置加载")
     void autoConfigLoadsByDefault() {
         runner.run(ctx -> {
-            assertTrue(ctx.containsBean("sqlTracingAutoConfiguration"),
-                    "SqlTracingAutoConfiguration 应作为 BeanPostProcessor 注册");
-            assertNotNull(ctx.getBean(SqlTracingAutoConfiguration.class));
+            assertTrue(ctx.containsBean("sqlTracingBeanPostProcessor"),
+                    "SqlTracingBeanPostProcessor 应注册为 bean");
         });
     }
 
@@ -42,14 +41,14 @@ class SqlTracingAutoConfigurationTest {
     @DisplayName("enabled=false 时不加载")
     void disabledByProperty() {
         runner.withPropertyValues("framework4j.datasource.sql-tracing.enabled=false")
-                .run(ctx -> assertFalse(ctx.containsBean("sqlTracingAutoConfiguration")));
+                .run(ctx -> assertFalse(ctx.containsBean("sqlTracingBeanPostProcessor")));
     }
 
     @Test
     @DisplayName("enabled=true 显式加载")
     void enabledExplicitly() {
         runner.withPropertyValues("framework4j.datasource.sql-tracing.enabled=true")
-                .run(ctx -> assertTrue(ctx.containsBean("sqlTracingAutoConfiguration")));
+                .run(ctx -> assertTrue(ctx.containsBean("sqlTracingBeanPostProcessor")));
     }
 
     @Test

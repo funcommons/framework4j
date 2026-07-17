@@ -1,9 +1,9 @@
 # framework4j
 
-> 企业级 Spring Boot 3.2 / Java 17 SDK — 覆盖鉴权、缓存、Redis、数据源、分布式 ID、幂等、限流、签名、审计、脱敏等企业后端 80%+ 基础设施场景。
+> 企业级 Spring Boot 3.5 / Java 17 SDK — 覆盖鉴权、缓存、Redis、数据源、分布式 ID、幂等、限流、签名、审计、脱敏等企业后端 80%+ 基础设施场景。
 
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green.svg)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green.svg)](https://spring.io/projects/spring-boot)
 [![License](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](./LICENSE)
 
 ## 模块总览（16 个）
@@ -43,7 +43,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.1.3</version>
+    <version>v1.2.0</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.1.3</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 
@@ -137,6 +137,16 @@ public class OrderController {
 - [Java开发准则.md](./Java开发准则.md) — 21 章完整规范（P0-P3 分级）
 - 各模块 `README.md` — 快速开始 + 配置示例 + Python 客户端示例
 - `framework4j-cache/DESIGN.md` — 缓存设计文档
+
+## 版本历史
+
+| 版本 | 关键变更 |
+|---|---|
+| **v1.2.0** | Spring Boot 3.2 → 3.5.16；Druid 1.2.20 → 1.2.28（切换 `druid-spring-boot-3-starter` artifact）；Redisson 3.25.0 → 4.6.1；MyBatis Plus 3.5.14 → 3.5.15；PostgreSQL JDBC 42.7.1 → 42.7.11（修 CVE-2026-42198）；Lombok 1.18.30 → 1.18.46（JDK 21 兼容）；H2 / Mockito / ByteBuddy / JUnit / commons / jacoco 等同步升级 |
+| v1.1.3 | 修复 GitHub Issue #1：`@OpenId @PathVariable` 静默失败 + IAE 异常分流（10102/10005/10106）+ 启动期 fail-fast 校验 + WebConfig Jackson 三开关 |
+| v1.1.2 | jsqlparser 5.x 版本冲突修复（`optional=true`）+ 5 层依赖防御（checklist + Enforcer + compat-test） |
+| v1.1.1 | MyBatis Plus 内置插件 + 文档重组 + P0 安全修复 |
+| v1.1.0 | +6 新模块（cache / audit / sensitive / signature / rate-limit / idempotency）+ demo + docs + skills |
 
 ## 构建
 
