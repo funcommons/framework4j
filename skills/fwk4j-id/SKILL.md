@@ -65,6 +65,6 @@ framework4j:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-id</artifactId>
-    <version>v1.2.0</version>
+    <version>v1.2.1</version>
 </dependency>
 ```
