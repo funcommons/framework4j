@@ -8,7 +8,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.1.3</version>
+    <version>1.2.0</version>
 </dependency>
 ```
 

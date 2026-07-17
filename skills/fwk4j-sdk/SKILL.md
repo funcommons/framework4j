@@ -10,7 +10,7 @@ metadata:
   language: zh-CN
   spec-version: v2.1
   groupId: com.github.funcommons.framework4j
-  version-available: v1.1.3
+  version-available: v1.2.0
   modules:
     - framework4j-all（聚合）
     - framework4j-api（ApiCode 错误码）
@@ -82,14 +82,14 @@ metadata:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.1.3</version>
+    <version>v1.2.0</version>
 </dependency>
 
 <!-- 或按需引入单模块 -->
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-signature</artifactId>
-    <version>v1.1.3</version>
+    <version>v1.2.0</version>
 </dependency>
 ```
 
