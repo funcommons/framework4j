@@ -142,8 +142,8 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
-| **v1.2.1** | 修复 v1.2.0 Lettuce poolConfig 泛型不兼容问题（Spring Data Redis 3.5 收紧 `GenericObjectPoolConfig` 类型参数；`framework4j-redis` 改用 `GenericObjectPoolConfig<StatefulConnection<?, ?>>` 显式类型） |
-| v1.2.0 | Spring Boot 3.2 → 3.5.16；Druid 1.2.20 → 1.2.28（切换 `druid-spring-boot-3-starter` artifact）；Redisson 3.25.0 → 4.6.1；MyBatis Plus 3.5.14 → 3.5.15；PostgreSQL JDBC 42.7.1 → 42.7.11（修 CVE-2026-42198）；Lombok 1.18.30 → 1.18.46（JDK 21 兼容）；H2 / Mockito / ByteBuddy / JUnit / commons / jacoco 等同步升级。**已知问题**：framework4j-redis 编译失败（泛型收紧），fixed in v1.2.1 |
+| **v1.2.1** | Spring Boot 3.2 → 3.5.16；Druid 1.2.20 → 1.2.28（切换 `druid-spring-boot-3-starter` artifact）；Redisson 3.25.0 → 4.6.1；MyBatis Plus 3.5.14 → 3.5.15；PostgreSQL JDBC 42.7.1 → 42.7.11（修 CVE-2026-42198）；Lombok 1.18.30 → 1.18.46（JDK 21 兼容）；H2 / Mockito / ByteBuddy / JUnit / commons / jacoco 等同步升级；修复 Lettuce poolConfig 泛型不兼容（Spring Data Redis 3.5 收紧 `GenericObjectPoolConfig` 类型参数） |
+| ~~v1.2.0~~ | **已撤回**：framework4j-redis 编译失败（Lettuce poolConfig 泛型收紧未适配），JitPack 仅发布 7 个不依赖 redis 的子模块。tag 已删除，请使用 v1.2.1 |
 | v1.1.3 | 修复 GitHub Issue #1：`@OpenId @PathVariable` 静默失败 + IAE 异常分流（10102/10005/10106）+ 启动期 fail-fast 校验 + WebConfig Jackson 三开关 |
 | v1.1.2 | jsqlparser 5.x 版本冲突修复（`optional=true`）+ 5 层依赖防御（checklist + Enforcer + compat-test） |
 | v1.1.1 | MyBatis Plus 内置插件 + 文档重组 + P0 安全修复 |
