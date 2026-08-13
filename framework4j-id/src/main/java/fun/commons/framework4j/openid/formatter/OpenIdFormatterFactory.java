@@ -1,57 +1,62 @@
 package fun.commons.framework4j.openid.formatter;
 
 import fun.commons.framework4j.openid.annotation.OpenId;
-import fun.commons.framework4j.openid.util.OpenIdTypeUtils;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
+import fun.commons.framework4j.openid.util.OpenIdValueCodec;
 import org.springframework.format.AnnotationFormatterFactory;
 import org.springframework.format.Parser;
 import org.springframework.format.Printer;
 
-import java.util.Collections;
-import java.util.HashSet;
+import java.text.ParseException;
 import java.util.Set;
 
 /**
- * OpenID 入参转换工厂 (Spring MVC)
+ * OpenID 入参转换工厂(Spring MVC @RequestParam/@PathVariable 标量入参)。
  * <p>
- * 作用:
- * 拦截带有 @OpenId 注解的 Controller 参数，实现 String -> Long/Integer 的自动还原。
- * 兼容纯数字输入 (以支持旧接口过渡)。
- * 支持类型：Long, long, Integer, int
+ * 受理的标量类型由 {@link OpenIdTypeSupport} 决定(默认 {@code Long/long};
+ * {@code support-integer} 开则含 {@code Integer/int};{@code support-string} 开则含 {@code String})。
+ * List/数组入参由 Spring 拆分后逐元素走本工厂的标量 parser。
+ * <p>
+ * v1.3:经 {@link OpenIdValueCodec} 以 Long 为枢轴,并接入 {@code accept-numeric-fallback} 开关
+ * (关掉则 path/query 入参也拒绝纯数字、只吃合法混淆串)。原 {@code OpenIdTypeUtils} 路径保留不动。
  */
 public class OpenIdFormatterFactory implements AnnotationFormatterFactory<OpenId> {
 
-    // v2.1: 不可变 Set 单例（原每次 new HashSet + add）
-    private static final Set<Class<?>> FIELD_TYPES = Set.of(Long.class, long.class, Integer.class, int.class);
+    private final OpenIdTypeSupport typeSupport;
+
+    public OpenIdFormatterFactory(OpenIdTypeSupport typeSupport) {
+        this.typeSupport = typeSupport;
+    }
 
     @Override
     public Set<Class<?>> getFieldTypes() {
-        return FIELD_TYPES;
+        return typeSupport.scalarTypes();
     }
 
     @Override
     public Printer<?> getPrinter(OpenId annotation, Class<?> fieldType) {
-        // 用于服务端渲染 (如 Thymeleaf) 或 MvcUriComponentsBuilder
-        return (object, locale) -> {
-            if (object == null) return null;
-            // 使用统一工具类进行转换
-            Object converted = OpenIdTypeUtils.convertToOpenId(object);
-            return converted != null ? converted.toString() : null;
-        };
+        return (object, locale) -> object == null ? null : OpenIdValueCodec.encodeToOpenId(object);
     }
 
     @Override
     public Parser<?> getParser(OpenId annotation, Class<?> fieldType) {
-        // 用于接口入参绑定 (String -> Long/Integer)
         return (text, locale) -> {
+            if (text == null || text.isEmpty()) {
+                return null;
+            }
+            Long pivoted;
             try {
-                // 使用统一工具类进行转换
-                return OpenIdTypeUtils.convertFromOpenId(text, fieldType);
-            } catch (java.text.ParseException e) {
-                // 重新抛出原始的ParseException，保留详细错误消息
-                throw e;
-            } catch (Exception e) {
-                // 对于其他异常，抛出通用的ParseException
-                throw new java.text.ParseException("Invalid OpenID format: " + text, 0);
+                pivoted = OpenIdValueCodec.decodeTextToLong(text, typeSupport.isAcceptNumericFallback());
+            } catch (IllegalArgumentException e) {
+                throw new ParseException("Invalid OpenID format: " + text + " (" + e.getMessage() + ")", 0);
+            }
+            if (pivoted == null) {
+                return null;
+            }
+            try {
+                return OpenIdValueCodec.convertLongToTarget(pivoted, fieldType);
+            } catch (ArithmeticException | IllegalArgumentException e) {
+                throw new ParseException("OpenID 转换失败: " + e.getMessage(), 0);
             }
         };
     }

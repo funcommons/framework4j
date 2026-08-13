@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import fun.commons.framework4j.openid.annotation.OpenId;
 import fun.commons.framework4j.openid.formatter.OpenIdFormatterFactory;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import fun.commons.framework4j.id.generator.SnowflakeDistributor;
 import fun.commons.framework4j.id.util.IdObfuscator;
 import lombok.Data;
@@ -193,7 +194,7 @@ class AllFeaturesTest {
     @DisplayName("3. Spring MVC 入参转换测试")
     class MvcConverterTest {
 
-        private final OpenIdFormatterFactory factory = new OpenIdFormatterFactory();
+        private final OpenIdFormatterFactory factory = new OpenIdFormatterFactory(OpenIdTypeSupport.allEnabled());
         private final Parser<?> parser = factory.getParser(null, Long.class);
 
         @Test

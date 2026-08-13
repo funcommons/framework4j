@@ -1,5 +1,6 @@
 package fun.commons.framework4j.openid.web;
 
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -23,6 +24,12 @@ import java.util.List;
 @Slf4j
 public class OpenIdArgumentResolverRegistrar implements BeanPostProcessor {
 
+    private final OpenIdTypeSupport typeSupport;
+
+    public OpenIdArgumentResolverRegistrar(OpenIdTypeSupport typeSupport) {
+        this.typeSupport = typeSupport;
+    }
+
     @Override
     public Object postProcessAfterInitialization(Object bean, String beanName) throws BeansException {
         if (bean instanceof RequestMappingHandlerAdapter adapter) {
@@ -36,7 +43,7 @@ public class OpenIdArgumentResolverRegistrar implements BeanPostProcessor {
                 }
             }
             List<HandlerMethodArgumentResolver> reordered = new ArrayList<>(existing.size() + 1);
-            reordered.add(new OpenIdPathVariableArgumentResolver());
+            reordered.add(new OpenIdPathVariableArgumentResolver(typeSupport));
             reordered.addAll(existing);
             adapter.setArgumentResolvers(reordered);
             log.info("【OpenID】OpenIdPathVariableArgumentResolver 已前置注入（共 {} 个解析器）",

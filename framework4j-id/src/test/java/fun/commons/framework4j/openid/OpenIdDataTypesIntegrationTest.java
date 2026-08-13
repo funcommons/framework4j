@@ -3,6 +3,7 @@ package fun.commons.framework4j.openid;
 import fun.commons.framework4j.openid.annotation.OpenId;
 import fun.commons.framework4j.openid.util.OpenIdTypeUtils;
 import fun.commons.framework4j.openid.formatter.OpenIdFormatterFactory;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import fun.commons.framework4j.id.util.IdObfuscator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +38,7 @@ class OpenIdDataTypesIntegrationTest {
 
         @Bean
         public OpenIdFormatterFactory openIdFormatterFactory() {
-            return new OpenIdFormatterFactory();
+            return new OpenIdFormatterFactory(OpenIdTypeSupport.allEnabled());
         }
     }
 

@@ -1,7 +1,8 @@
 package fun.commons.framework4j.openid.web;
 
 import fun.commons.framework4j.openid.annotation.OpenId;
-import fun.commons.framework4j.openid.util.OpenIdTypeUtils;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
+import fun.commons.framework4j.openid.util.OpenIdValueCodec;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,33 +13,32 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import org.springframework.web.servlet.HandlerMapping;
 
-import java.text.ParseException;
 import java.util.Map;
 
 /**
- * 处理 {@code @OpenId @PathVariable} 的参数解析器
+ * 处理 {@code @OpenId @PathVariable} 的参数解析器(v1.3 三开关:受理类型由 {@link OpenIdTypeSupport} 决定)。
  * <p>
- * v2.2：替代依赖 {@code OpenIdFormatterFactory} 的 ConversionService 路径，绕过 Spring
- * {@code MethodParameter.getParameterName()} 反射 —— 该反射要求 javac {@code -parameters}
- * 编译 flag，否则抛 {@code IllegalArgumentException}，被 framework4j-web 包成 10106 静默失败。
+ * v2.2:替代依赖 {@code OpenIdFormatterFactory} 的 ConversionService 路径,绕过 Spring
+ * {@code MethodParameter.getParameterName()} 反射(要求 javac {@code -parameters} flag)。
+ * 直接从 {@link HandlerMapping#URI_TEMPLATE_VARIABLES_ATTRIBUTE} 读 path 变量值。
  * <p>
- * 本解析器直接从 {@link HandlerMapping#URI_TEMPLATE_VARIABLES_ATTRIBUTE} 读 path 变量值，
- * 仅在 {@code @PathVariable} 没显式 name（如 {@code @PathVariable Long id} 而非
- * {@code @PathVariable("id") Long id}）时才回退到 parameter name 反射 —— 此时显式抛清晰异常，
- * 指引用户加 {@code -parameters} flag 或显式 name。
- * <p>
- * 仅处理 {@code @OpenId @PathVariable}，{@code @OpenId @RequestParam} 等仍走
- * {@link fun.commons.framework4j.openid.formatter.OpenIdFormatterFactory}。
+ * 解码经 {@link OpenIdValueCodec} 以 Long 为枢轴:text → Long → 目标类型(Long/Integer/String)。
  *
- * @since 2.2.0
+ * @since 2.2.0(v1.3 接入三开关)
  */
 public class OpenIdPathVariableArgumentResolver implements HandlerMethodArgumentResolver {
+
+    private final OpenIdTypeSupport typeSupport;
+
+    public OpenIdPathVariableArgumentResolver(OpenIdTypeSupport typeSupport) {
+        this.typeSupport = typeSupport;
+    }
 
     @Override
     public boolean supportsParameter(MethodParameter parameter) {
         return parameter.hasParameterAnnotation(OpenId.class)
                 && parameter.hasParameterAnnotation(PathVariable.class)
-                && OpenIdTypeUtils.isSupportedSingleType(parameter.getParameterType());
+                && typeSupport.supportsScalar(parameter.getParameterType());
     }
 
     @Override
@@ -54,15 +54,19 @@ public class OpenIdPathVariableArgumentResolver implements HandlerMethodArgument
         String rawValue = lookupUriVariable(webRequest, varName);
         if (rawValue == null) {
             if (required) {
-                throw new ServletRequestBindingException(
-                        "Missing path variable '" + varName + "'");
+                throw new ServletRequestBindingException("Missing path variable '" + varName + "'");
             }
             return null;
         }
 
+        Class<?> targetType = parameter.getParameterType();
         try {
-            return OpenIdTypeUtils.convertFromOpenId(rawValue, parameter.getParameterType());
-        } catch (ParseException e) {
+            Long pivoted = OpenIdValueCodec.decodeTextToLong(rawValue, typeSupport.isAcceptNumericFallback());
+            if (pivoted == null) {
+                return null;
+            }
+            return OpenIdValueCodec.convertLongToTarget(pivoted, targetType);
+        } catch (RuntimeException e) {
             throw new IllegalArgumentException(
                     "Invalid @OpenId path variable '" + varName + "' value: " + rawValue
                             + " (expected 12-char OpenID or numeric string)", e);

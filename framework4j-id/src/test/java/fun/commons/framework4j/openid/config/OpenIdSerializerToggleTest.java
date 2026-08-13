@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import fun.commons.framework4j.id.util.IdObfuscator;
 import fun.commons.framework4j.openid.annotation.OpenId;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -42,7 +43,7 @@ class OpenIdSerializerToggleTest {
     void modifierEnabled_obfuscates() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         SimpleModule module = new SimpleModule();
-        module.setSerializerModifier(new OpenIdBeanSerializerModifier());
+        module.setSerializerModifier(new OpenIdBeanSerializerModifier(OpenIdTypeSupport.defaults()));
         mapper.registerModule(module);
 
         long raw = 123456789L;
@@ -74,7 +75,7 @@ class OpenIdSerializerToggleTest {
     void modifierEnabled_nullSerializedAsNull() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
         SimpleModule module = new SimpleModule();
-        module.setSerializerModifier(new OpenIdBeanSerializerModifier());
+        module.setSerializerModifier(new OpenIdBeanSerializerModifier(OpenIdTypeSupport.defaults()));
         mapper.registerModule(module);
 
         String json = mapper.writeValueAsString(new SampleDto(null, "hello"));
