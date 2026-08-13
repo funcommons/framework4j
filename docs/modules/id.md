@@ -84,7 +84,11 @@ public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
 | `framework4j.openid.salt` | `String` | 必填 | HMAC 盐值，环境变量注入 |
 | `framework4j.openid.length` | `int` | `12` | 输出字符长度（11 数据 + 1 校验位） |
 | `framework4j.openid.alphabet` | `String` | `0123456789ABCDEFGHJKMNPQRSTVWXYZ` | 字符表（去除易混字符） |
-| `framework4j.openid.fail-fast` | `boolean` | `true` | v2.2 启动期校验：检测到 `@OpenId @PathVariable` 缺 `-parameters` 立即启动失败（loud &gt; silent） |
+| `framework4j.openid.fail-fast` | `boolean` | `true` | v2.2 启动期校验：检测到 `@OpenId @PathVariable` 缺 `-parameters` 立即启动失败（loud &gt; silent）。v1.3 追加：`@RequestBody` DTO 上 `@OpenId` 标在未受理类型（如开关关时的 `Integer`、`Map`）也启动失败 |
+| `framework4j.openid.request-body-deserializer` | `boolean` | `true` | v1.3 `@RequestBody` 中 `@OpenId` 反序列化器子开关（特殊 DTO 走自定义反序列化时关） |
+| `framework4j.openid.support-integer` | `boolean` | `false` | v1.3 `@OpenId` 受理 `Integer/int`（含集合/数组），三通道（序列化 / 反序列化 / path-query 入参）补齐对称 |
+| `framework4j.openid.support-string` | `boolean` | `false` | v1.3 `@OpenId` 受理 `String`（含 `List&lt;String&gt;` 等），以 Long 为枢轴双向转：字段持数字串、线上混淆串。**迁移 String 入参的最轻路径** |
+| `framework4j.openid.accept-numeric-fallback` | `boolean` | `true` | v1.3 关掉则所有 `@OpenId` 字段拒绝纯数字、只吃合法混淆串（迁移完成后强制收口，反枚举） |
 
 ## 4. API 参考
 
@@ -140,6 +144,8 @@ public record OrderVO(
 &gt; **v2.2 实现机制**：`@OpenId` 注解本身不带 `@JsonSerialize`（旧版本带，会导致 `framework4j.openid.enabled=false` 时序列化器仍生效，因为 Jackson 字段级注解走静态反射，绕过 Spring 容器）。当前实现是 `OpenIdAutoConfiguration` 通过 `OpenIdBeanSerializerModifier` 动态扫描 `@OpenId` 字段并应用序列化器。关闭 `framework4j.openid.enabled=false` 时，modifier 不注册，`@OpenId Long` 字段按普通 Long 序列化（走 framework4j-web 的 Long→String 输出数字字符串）。
 &gt;
 &gt; **入参还原**（`OpenIdFormatterFactory`）同样受开关控制 —— 关闭后 `@OpenId Long` 入参不再自动从 12 字符串还原，需消费方自行处理。
+&gt;
+&gt; **v1.3 请求体反序列化 + 注册机制修复**：`@RequestBody` JSON 中的 `@OpenId Long` / `List&lt;Long&gt;` / 嵌套 record 字段现在自动反混淆（`OpenIdBeanDeserializerModifier`，Jackson per-bean 递归，嵌套字段天然生效，无需 `@OpenIdRecursive`）。序列化侧 modifier 同步类型感知，`@OpenId List&lt;Long&gt;` 输出混淆串数组。**关键**：OpenId Jackson 模块改用 `BeanPostProcessor` 在 `ObjectMapper` 初始化后直接 `registerModule` 注册——旧写法走 `Jackson2ObjectMapperBuilderCustomizer.modulesToInstall`，与 framework4j-web 的 Long→String（同样 `modulesToInstall`）互冲，会让 OpenId 模块成"孤儿"（`setupModule` 不调用，序列化/反序列化全失效）。`Integer`/`String`/集合等受理范围由 `support-integer`/`support-string` 开关控制（默认仅 `Long`/`long`）。
 
 ### `@OpenId @PathVariable` 入参还原（v2.2 修复 GitHub Issue #1）
 
@@ -239,3 +245,57 @@ A：前端永远拿 12 字符串，传回时也是 12 字符串。前端不需�
 
 **Q5：数据库存 `Long` 还是 OpenID 字符串？**
 A：存 `Long`（雪花 ID）。OpenID 仅在 API 层暴露。`OpenIdTypeHandler` 用于历史数据库已存字符串的场景。
+
+## 8. @OpenId 落地迁移指南（v1.3）
+
+`@OpenId` 的接受规则（v1.3 三开关）：
+
+- **合法 12 字符混淆串**（含 `PREFIX_xxx`）→ 永远接受，反混淆。
+- **纯数字 / 数字串** → 默认接受（兼容期），`accept-numeric-fallback=false` 时拒绝（迁移后收口）。
+- **非法串** → 拒绝（抛 `MismatchedInputException` → framework4j-web `GlobalExceptionHandler` → HTTP 200 + `BODY_FORMAT_ERROR 10103`）。
+
+&gt; 关键事实：`@OpenId Long` 入参（path/query/body）**同时接受数字串和混淆串**。所以把老的 `String id + Long.parseLong` 改成 `@OpenId Long id` 是**向后兼容**的——老前端传数字 id 照样解析。
+
+### 8.1 入参迁移对照表
+
+| 场景 | 迁移前 | 迁移后（推荐） | 备注 |
+|---|---|---|---|
+| `@PathVariable` | `@PathVariable String id` + `Long.parseLong(id)` | `@OpenId @PathVariable("id") Long id` | 数字串+混淆串都吃，类型改 Long |
+| `@RequestParam` | `@RequestParam String id` + `parseLong` | `@OpenId @RequestParam("id") Long id` | 同上 |
+| `@RequestBody` | DTO `String id` + 业务层 `parseLong` | DTO `@OpenId Long id`（v1.3 框架自动还原） | v1.3 新能力，无需手工 `fromOpenId` |
+| `List&lt;Long&gt;` 入参 | `List&lt;String&gt;` + 循环 `fromOpenId` | `@OpenId List&lt;Long&gt;`（v1.3） | 集合/数组逐元素还原 |
+| **不想改类型** | `@PathVariable String id`（保留 String） | `@OpenId @PathVariable("id") String id` + `support-string=true` | 字段仍是 String（持数字串），`parseLong` 不动；最轻改动 |
+
+&gt; 最后一行的 `support-string=true` 是 R4 的"最轻迁移"：老 String 入参只加一个 `@OpenId` 注解、类型不变、`parseLong` 不动，但线上已混淆。代价是 String 字段契约"持数字串"（序列化遇非数字串会报错，严格）。
+
+### 8.2 出参迁移对照表
+
+| 场景 | 迁移前 | 迁移后 |
+|---|---|---|
+| VO 主键 | `String.valueOf(entity.getId())` 手工混淆 | `@OpenId Long id`（框架序列化为 12 字符串） |
+| VO 集合 | 循环 `IdObfuscator.toOpenId` | `@OpenId List&lt;Long&gt; ids`（v1.3 输出混淆串数组） |
+| audit 等手工调用 | `IdObfuscator.toOpenId(id, "USR")` | `@OpenId Long id`（注解代替手工） |
+
+### 8.3 灰度策略（回滚路径）
+
+```yaml
+framework4j:
+  openid:
+    enabled: true                       # 总开关，false 全关（序列化+反序列化+入参还原）
+    request-body-deserializer: true     # v1.3 请求体反序列化；出问题时可单独关，回退到手工 fromOpenId
+    accept-numeric-fallback: true       # 兼容期：吃数字；全员迁完混淆串后改 false 强制收口
+    support-integer: false              # 字典表（Integer）默认不混淆；需要时开
+    support-string: false               # 保留 String 入参时开
+```
+
+- **兼容期**：`accept-numeric-fallback=true`，老前端传数字 id 不破，新前端逐步传混淆串。
+- **收口期**：前端全量切混淆串后，`accept-numeric-fallback=false`，拒绝裸数字 id（反枚举）。
+- **回滚**：任一通道出问题，单独关对应开关（`request-body-deserializer` / `enabled`），不影响其余。
+
+### 8.4 fail-fast 兜底
+
+启动期 `OpenIdFailFastValidator`（`fail-fast=true` 默认）会拦下两类迁移期常见错误，把 silent failure 变 loud：
+
+1. `@OpenId @PathVariable` 缺 name 且未加 `-parameters` → 启动失败，提示加 `&lt;parameters&gt;true&lt;/parameters&gt;` 或显式 `@PathVariable("name")`。
+2. `@RequestBody` DTO（含嵌套）的 `@OpenId` 标在未受理类型上（如 `support-integer=false` 时的 `@OpenId Integer`、`@OpenId Map`）→ 启动失败，提示改 Long 或开对应开关。
+

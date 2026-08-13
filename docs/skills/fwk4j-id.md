@@ -23,6 +23,13 @@ String prefixed = IdObfuscator.toOpenId(original, "ORD"); // → "ORD_DxjWpoSI9f
 - 固化字符集（防 JDK 版本差异）
 - MyBatis TypeHandler + Jackson Serializer 全链路适配
 
+## @OpenId 注解（v1.3：双向自动转换，业务侧零手工调用）
+
+- 标 DTO/VO 字段 `@OpenId Long id` → 出参自动混淆串；**`@RequestBody` 入参自动反混淆**（含 `List<Long>` / `Set<Long>` / `Long[]` / 嵌套 record，无需 `@OpenIdRecursive`）
+- 标参数 `@OpenId @PathVariable/@RequestParam Long id` → 混淆串/数字串自动还原
+- 开关（`framework4j.openid.*`）：`support-integer` / `support-string`（默认 false）、`accept-numeric-fallback`（默认 true，关掉只吃混淆串）、`request-body-deserializer`（默认 true）
+- 业务代码不写手工 `IdObfuscator.fromOpenId/toOpenId`；`@OpenId` 只标字段/标量参数，**不要**标在 `@RequestBody` 整个对象上（无效）
+
 ## WorkerIdStrategy
 
 | 策略 | 说明 |
