@@ -2,6 +2,7 @@ package fun.commons.framework4j.openid.web;
 
 import fun.commons.framework4j.id.util.IdObfuscator;
 import fun.commons.framework4j.openid.annotation.OpenId;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ class OpenIdPathVariableArgumentResolverTest {
 
     @BeforeEach
     void setUp() {
-        resolver = new OpenIdPathVariableArgumentResolver();
+        resolver = new OpenIdPathVariableArgumentResolver(OpenIdTypeSupport.builder().integer(true).build());
     }
 
     // ============ supportsParameter ============

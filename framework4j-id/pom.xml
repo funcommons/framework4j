@@ -8,7 +8,7 @@
     <parent>
         <groupId>fun.commons</groupId>
         <artifactId>framework4j</artifactId>
-        <version>1.2.1</version>
+        <version>1.2.3</version>
     </parent>
 
     <artifactId>framework4j-id</artifactId>
@@ -31,6 +31,15 @@
             <groupId>fun.commons</groupId>
             <artifactId>framework4j-web</artifactId>
             <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- jakarta.validation-api（仅测试时用）：GlobalExceptionHandler 的 @ExceptionHandler
+             引用 ConstraintViolationException，容器内省该 advice 时需此类可加载。
+             spring-boot-starter-web 自 Boot 2.3 不再传递 validation，故测试显式补齐 -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
             <scope>test</scope>
         </dependency>
 

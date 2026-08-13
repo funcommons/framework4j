@@ -1,6 +1,7 @@
 package fun.commons.framework4j.openid.formatter;
 
 import fun.commons.framework4j.id.util.IdObfuscator;
+import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -25,7 +26,7 @@ class OpenIdFormatterFactoryTest {
 
     @BeforeEach
     void setUp() {
-        factory = new OpenIdFormatterFactory();
+        factory = new OpenIdFormatterFactory(OpenIdTypeSupport.builder().integer(true).build());
     }
 
     @Test
