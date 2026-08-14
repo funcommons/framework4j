@@ -43,7 +43,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.2.3</version>
+    <version>v1.2.4</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.2.3</version>
+    <version>1.2.4</version>
 </dependency>
 ```
 
@@ -142,6 +142,7 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
+| **v1.2.4** | framework4j-datetime 修复 GitHub Issue #8：`@LocalTimeFormat` 的 `@Target` 补充 `PARAMETER`（此前按文档示例标在 `@RequestParam` 参数上编译失败，MMagiX audit 9 处被卡）。语义澄清：参数级注解仅为语义标记，**入参多格式解析（时间戳/ISO/空格）由全局 `StringToOffsetDateTimeConverter` 负责、无需注解**；出参格式由方法/类级注解控制（`yyyy-MM-dd HH:mm:ss` GMT+8）。新增注解契约测试 + 技能文档同步。⚠️ 下游注意：升级后可移除 `@DateTimeFormat` workaround（它会顶掉全局多格式转换器），裸 `@RequestParam OffsetDateTime` 即可 |
 | **v1.2.3** | **framework4j-id `@OpenId` 重大更新**。🔴 **critical 修复**：OpenId Jackson 模块改用 `BeanPostProcessor` 直接 `mapper.registerModule` 注册，修复与 framework4j-web Long→String 的 `modulesToInstall` 互冲——此前 `@OpenId` 序列化/反序列化在容器级**静默失效**（对应 `OpenIdWebIntegrationTest` 长期 `@Disabled`），存量项目建议升级。**R1/R2/R3**：`@RequestBody` 中 `@OpenId` 字段（`Long` / `List<Long>` / `Set<Long>` / `Long[]` / `long[]` / 嵌套 record）自动反混淆；序列化侧 `@OpenId List<Long>` 输出混淆串数组。**R4 三开关**：`support-integer` / `support-string`（默认 false，opt-in `Integer`/`String` 及其集合，String 以 Long 为枢轴双向转）/ `accept-numeric-fallback`（默认 true，关掉拒绝裸数字、迁移后收口反枚举）+ 子开关 `request-body-deserializer`（默认 true）。**R6**：fail-fast 增加 `@RequestBody` DTO 字段误用扫描（`@OpenId` 标在未受理类型上启动报错）+ 消息全限定类名。**R8**：README `@OpenId` 落地迁移指南。⚠️ **breaking**：path/query 入参的 `@OpenId Integer` 从"默认支持"改为需 `support-integer=true`（对齐开关；序列化侧本就不支持 Integer）。R7（`strict`）未做（数字透传已保护真数字 Long 字段） |
 | **v1.2.1** | Spring Boot 3.2 → 3.5.16；Druid 1.2.20 → 1.2.28（切换 `druid-spring-boot-3-starter` artifact）；Redisson 3.25.0 → 4.6.1；MyBatis Plus 3.5.14 → 3.5.15；PostgreSQL JDBC 42.7.1 → 42.7.11（修 CVE-2026-42198）；Lombok 1.18.30 → 1.18.46（JDK 21 兼容）；H2 / Mockito / ByteBuddy / JUnit / commons / jacoco 等同步升级；修复 Lettuce poolConfig 泛型不兼容（Spring Data Redis 3.5 收紧 `GenericObjectPoolConfig` 类型参数） |
 | ~~v1.2.0~~ | **已撤回**：framework4j-redis 编译失败（Lettuce poolConfig 泛型收紧未适配），JitPack 仅发布 7 个不依赖 redis 的子模块。tag 已删除，请使用 v1.2.1 |
