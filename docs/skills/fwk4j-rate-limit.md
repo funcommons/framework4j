@@ -62,6 +62,6 @@ framework4j:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-rate-limit</artifactId>
-    <version>v1.2.4</version>
+    <version>v1.2.5</version>
 </dependency>
 ```

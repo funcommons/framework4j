@@ -48,7 +48,7 @@ String traceId = TraceContext.getTraceId();  // 从 MDC / Micrometer Tracer 取
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-web</artifactId>
-    <version>v1.2.4</version>
+    <version>v1.2.5</version>
 </dependency>
 ```
 

@@ -32,7 +32,7 @@ ApiCode code = ApiCode.fromCode(10500); // → TOO_MANY_REQUESTS
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-api</artifactId>
-    <version>v1.2.4</version>
+    <version>v1.2.5</version>
 </dependency>
 ```
 
