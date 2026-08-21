@@ -118,6 +118,46 @@ class IdempotencyInterceptorTest {
     }
 
     @Test
+    @DisplayName("v1.2.7: 重入守卫 —— 同一请求第二次 preHandle 直接放行，不再触 Redis（双注册场景锁定）")
+    void reentrantSameRequestPassesWithoutRedis() throws Exception {
+        // 首次 SETNX 成功（Lua 返回 null）
+        when(redisTemplate.execute(any(), anyList(), any(Object[].class))).thenReturn(null);
+
+        MockHttpServletRequest rawReq = new MockHttpServletRequest("POST", "/api/orders");
+        rawReq.addHeader("Idempotency-Key", VALID_UUID);
+        rawReq.setContent("{\"a\":1}".getBytes());
+        CachedBodyRequestWrapper req = new CachedBodyRequestWrapper(rawReq);
+        req.cacheBody();
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+
+        // 第一次进入：SETNX 成功，放行
+        assertTrue(interceptor.preHandle(req, resp, new Object()));
+        // 第二次进入（模拟拦截器被重复注册）：重入守卫直接放行，不应再读 Redis 后 409 自己
+        assertTrue(interceptor.preHandle(req, resp, new Object()));
+        // Redis Lua 只被调用一次（第二次进入未触 Redis）
+        verify(redisTemplate, times(1)).execute(any(), anyList(), any(Object[].class));
+        assertEquals(200, resp.getStatus());
+    }
+
+    @Test
+    @DisplayName("v1.2.7: PENDING 并发态 → 409 且消息提示稍后重试（区别于普通重复提交）")
+    void pendingConcurrentStateReturns409WithRetryHint() throws Exception {
+        // bodyHashRequired=false → bodyHash="*"；已存在值 hash 匹配但状态为 PENDING
+        when(redisTemplate.execute(any(), anyList(), any(Object[].class))).thenReturn("*|PENDING");
+        properties.setBodyHashRequired(false);
+
+        MockHttpServletRequest req = new MockHttpServletRequest("POST", "/api/orders");
+        req.addHeader("Idempotency-Key", VALID_UUID);
+        req.setContent("{\"a\":1}".getBytes());
+        MockHttpServletResponse resp = new MockHttpServletResponse();
+
+        assertFalse(interceptor.preHandle(req, resp, new Object()));
+        assertEquals(409, resp.getStatus());
+        assertTrue(resp.getContentAsString().contains("仍在处理中"),
+                "PENDING 并发态消息应提示稍后重试，实际: " + resp.getContentAsString());
+    }
+
+    @Test
     @DisplayName("同 key + 同 body + 已 OK = 回放缓存响应")
     void replayCachedBody() throws Exception {
         String cachedResp = "{\"code\":0,\"data\":{\"id\":42}}";
