@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.2.6`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.2.7`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |

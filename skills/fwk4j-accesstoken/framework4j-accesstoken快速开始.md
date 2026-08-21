@@ -30,7 +30,7 @@
 <dependency>
     <groupId>com.ldx2t</groupId>
     <artifactId>ldx2t-commons-all</artifactId>
-    <version>1.2.6</version>
+    <version>1.2.7</version>
 </dependency>
 ```
 

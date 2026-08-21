@@ -82,14 +82,14 @@ metadata:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.2.6</version>
+    <version>v1.2.7</version>
 </dependency>
 
 <!-- 或按需引入单模块 -->
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-signature</artifactId>
-    <version>v1.2.6</version>
+    <version>v1.2.7</version>
 </dependency>
 ```
 
