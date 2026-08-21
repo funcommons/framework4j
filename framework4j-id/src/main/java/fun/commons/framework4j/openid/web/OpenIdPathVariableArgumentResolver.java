@@ -2,7 +2,7 @@ package fun.commons.framework4j.openid.web;
 
 import fun.commons.framework4j.openid.annotation.OpenId;
 import fun.commons.framework4j.openid.util.OpenIdTypeSupport;
-import fun.commons.framework4j.openid.util.OpenIdValueCodec;
+import fun.commons.framework4j.openid.util.OpenIdLongCodec;
 import org.springframework.core.MethodParameter;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +22,7 @@ import java.util.Map;
  * {@code MethodParameter.getParameterName()} 反射(要求 javac {@code -parameters} flag)。
  * 直接从 {@link HandlerMapping#URI_TEMPLATE_VARIABLES_ATTRIBUTE} 读 path 变量值。
  * <p>
- * 解码经 {@link OpenIdValueCodec} 以 Long 为枢轴:text → Long → 目标类型(Long/Integer/String)。
+ * 解码经 {@link OpenIdLongCodec} 以 Long 为枢轴:text → Long → 目标类型(Long/Integer/String)。
  *
  * @since 2.2.0(v1.3 接入三开关)
  */
@@ -61,11 +61,11 @@ public class OpenIdPathVariableArgumentResolver implements HandlerMethodArgument
 
         Class<?> targetType = parameter.getParameterType();
         try {
-            Long pivoted = OpenIdValueCodec.decodeTextToLong(rawValue, typeSupport.isAcceptNumericFallback());
+            Long pivoted = OpenIdLongCodec.decodeTextToLong(rawValue, typeSupport.isAcceptNumericFallback());
             if (pivoted == null) {
                 return null;
             }
-            return OpenIdValueCodec.convertLongToTarget(pivoted, targetType);
+            return OpenIdLongCodec.convertLongToTarget(pivoted, targetType);
         } catch (RuntimeException e) {
             throw new IllegalArgumentException(
                     "Invalid @OpenId path variable '" + varName + "' value: " + rawValue

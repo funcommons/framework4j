@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import fun.commons.framework4j.openid.util.OpenIdValueCodec;
+import fun.commons.framework4j.openid.util.OpenIdLongCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -24,8 +24,8 @@ import java.util.Set;
  * {@code List}→{@link ArrayList}、{@code Set}→{@link LinkedHashSet}(保序去重)、
  * {@code Queue}→{@link ArrayDeque}、数组→对应 {@code Long[]/long[]/Integer[]/int[]/String[]}。
  * <p>
- * 逐元素以 Long 为枢轴:token → {@link OpenIdValueCodec#decodeTokenToLong} →
- * {@link OpenIdValueCodec#convertLongToTarget} 转成元素目标类型。null 元素保留(List/Set),
+ * 逐元素以 Long 为枢轴:token → {@link OpenIdLongCodec#decodeTokenToLong} →
+ * {@link OpenIdLongCodec#convertLongToTarget} 转成元素目标类型。null 元素保留(List/Set),
  * 基本类型数组({@code long[]}/{@code int[]})的 null 元素以 0 填充。
  *
  * @since 1.3.0
@@ -59,7 +59,7 @@ public class OpenIdCollectionDeserializer extends JsonDeserializer<Object> {
                 buffer.add(null);
                 continue;
             }
-            Long pivoted = OpenIdValueCodec.decodeTokenToLong(p, ctxt, acceptNumericFallback);
+            Long pivoted = OpenIdLongCodec.decodeTokenToLong(p, ctxt, acceptNumericFallback);
             buffer.add(pivoted == null ? null : convertElement(pivoted, p));
         }
 
@@ -78,7 +78,7 @@ public class OpenIdCollectionDeserializer extends JsonDeserializer<Object> {
 
     private Object convertElement(long pivoted, JsonParser p) throws IOException {
         try {
-            return OpenIdValueCodec.convertLongToTarget(pivoted, elementTarget);
+            return OpenIdLongCodec.convertLongToTarget(pivoted, elementTarget);
         } catch (ArithmeticException | IllegalArgumentException e) {
             throw MismatchedInputException.from(p, elementTarget, e.getMessage());
         }

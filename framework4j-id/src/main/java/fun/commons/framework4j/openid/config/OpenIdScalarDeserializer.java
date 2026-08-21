@@ -4,15 +4,15 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
-import fun.commons.framework4j.openid.util.OpenIdValueCodec;
+import fun.commons.framework4j.openid.util.OpenIdLongCodec;
 
 import java.io.IOException;
 
 /**
  * {@code @OpenId} 标量字段反序列化器(Long / Integer / String,由 {@code OpenIdTypeSupport} 开关决定受理范围)。
  * <p>
- * 以 Long 为枢轴:Jackson token → {@link OpenIdValueCodec#decodeTokenToLong} →
- * {@link OpenIdValueCodec#convertLongToTarget} 转成目标标量。
+ * 以 Long 为枢轴:Jackson token → {@link OpenIdLongCodec#decodeTokenToLong} →
+ * {@link OpenIdLongCodec#convertLongToTarget} 转成目标标量。
  * <ul>
  *   <li>Long/long → 直接返回 Long</li>
  *   <li>Integer/int → {@code Math.toIntExact}(溢出抛错,防恶意大值静默截断)</li>
@@ -34,12 +34,12 @@ public class OpenIdScalarDeserializer extends JsonDeserializer<Object> {
 
     @Override
     public Object deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-        Long pivoted = OpenIdValueCodec.decodeTokenToLong(p, ctxt, acceptNumericFallback);
+        Long pivoted = OpenIdLongCodec.decodeTokenToLong(p, ctxt, acceptNumericFallback);
         if (pivoted == null) {
             return null;
         }
         try {
-            return OpenIdValueCodec.convertLongToTarget(pivoted, target);
+            return OpenIdLongCodec.convertLongToTarget(pivoted, target);
         } catch (ArithmeticException | IllegalArgumentException e) {
             // Integer 溢出等 → 包成 MismatchedInputException(→ GlobalExceptionHandler → BODY_FORMAT_ERROR)
             throw MismatchedInputException.from(p, target, e.getMessage());
