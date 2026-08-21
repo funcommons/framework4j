@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.2.4`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.2.5`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
@@ -106,6 +106,8 @@ When changing the obfuscator, run the regression suite under `framework4j-id/src
 ### SQL tracing (framework4j-sql-tracing)
 
 `SqlTracingAutoConfiguration` (split from `framework4j-datasource` in v2.0) registers `TraceIdDruidFilter`, which prefixes every SQL with the current trace ID. The provider (`DefaultTraceIdProvider`) reads from SLF4J MDC (Micrometer Tracing populates it); override the `TraceIdProvider` bean to source trace IDs from somewhere else (e.g. a custom header). Modes: `DISABLED` / `WRITE_ONLY` (INSERT/UPDATE/DELETE) / `ALL` (default).
+
+> **v1.2.5 config lookup precedence (downstream benefit4j report #6 fix)**: `SqlTracingBeanPostProcessor` binds `SqlTracingProperties` per Druid datasource with **per-datasource first, global fallback**: `framework4j.datasource.datasources.{name}.sql-tracing.*` wins if present (override), else `framework4j.datasource.sql-tracing.*` (same prefix as the master switch — the documented location now actually works). Before v1.2.5 only the per-datasource prefix was checked, so apps that configured only the global prefix had the master switch on but **no filter injected, silently**. Skips are now logged loudly (WARN when no config found at either level, INFO when `mode=DISABLED`); bind exceptions are no longer swallowed.
 
 ## Conventions
 
