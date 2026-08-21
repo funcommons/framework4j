@@ -21,7 +21,7 @@ mc-api-spec §8.5 强制要求限流响应头三件套 + 信封 10500。Spring C
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-rate-limit</artifactId>
-    <version>1.2.5</version>
+    <version>1.2.6</version>
 </dependency>
 ```
 

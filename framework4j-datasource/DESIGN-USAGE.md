@@ -8,7 +8,7 @@
 <dependency>
     <groupId>com.ldx2t</groupId>
     <artifactId>ldx2t-commons-all</artifactId>
-    <version>1.2.5</version>
+    <version>1.2.6</version>
 </dependency>
 
 <!-- MySQL 驱动 -->
