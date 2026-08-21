@@ -3,7 +3,7 @@ package fun.commons.framework4j.openid.config;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
-import fun.commons.framework4j.openid.util.OpenIdValueCodec;
+import fun.commons.framework4j.openid.util.OpenIdLongCodec;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
@@ -12,7 +12,7 @@ import java.lang.reflect.Array;
  * {@code @OpenId} 集合/数组字段序列化器。
  * <p>
  * 元素类型由 {@code OpenIdTypeSupport} 开关决定(Long / Integer / String);逐元素经
- * {@link OpenIdValueCodec#encodeToOpenId} 以 Long 为枢轴混淆(Number → longValue;String → parseLong),
+ * {@link OpenIdLongCodec#encodeToOpenId} 以 Long 为枢轴混淆(Number → longValue;String → parseLong),
  * {@code null} 元素输出 JSON null。覆盖 {@code Collection} 与数组(含 {@code long[]}/{@code int[]})。
  *
  * @since 1.3.0
@@ -48,6 +48,6 @@ public class OpenIdCollectionJsonSerializer extends JsonSerializer<Object> {
             gen.writeNull();
             return;
         }
-        gen.writeString(OpenIdValueCodec.encodeToOpenId(element));
+        gen.writeString(OpenIdLongCodec.encodeToOpenId(element));
     }
 }
