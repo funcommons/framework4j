@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-accesstoken</artifactId>
-    <version>1.2.6</version>
+    <version>1.2.7</version>
 </dependency>
 <!-- 自动引入 framework4j-redis -->
 ```

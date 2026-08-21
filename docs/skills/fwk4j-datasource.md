@@ -39,7 +39,7 @@ public class OrderService {
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-datasource</artifactId>
-    <version>v1.2.6</version>
+    <version>v1.2.7</version>
 </dependency>
 ```
 

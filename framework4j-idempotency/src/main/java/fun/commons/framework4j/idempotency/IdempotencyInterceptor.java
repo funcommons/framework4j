@@ -29,6 +29,16 @@ import java.util.regex.Pattern;
  *   <li>preHandle 阶段主动 readAllBytes 触发 ContentCachingRequestWrapper 缓存（修 body hash 全相同 bug）</li>
  *   <li>afterCompletion 从 ContentCachingResponseWrapper 取响应体（修回放空响应 bug）</li>
  * </ul>
+ * <p>
+ * v1.2.7 修复（下游 benefit4j 排查报告 bug2 "第一次必 409"）：
+ * <ul>
+ *   <li><b>重入守卫</b>：同一请求第二次进入 preHandle（典型场景：拦截器被重复注册，
+ *       如 v1.2.5 框架注册 + 下游自建 workaround 注册未拆除）时，检测到本请求已通过
+ *       SETNX（{@code ATTR_REDIS_KEY} 属性存在）直接放行 —— 不再读到自己刚写的
+ *       PENDING 标记而 409 自己。</li>
+ *   <li><b>PENDING 并发态区分</b>：同 key 前一请求仍在处理中（PENDING）时的 409
+ *       响应消息与普通重复提交区分，并打 WARN 日志，便于排查。</li>
+ * </ul>
  */
 @Slf4j
 public class IdempotencyInterceptor implements HandlerInterceptor {
@@ -81,6 +91,12 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
+        // v1.2.7: 重入守卫 —— 同一请求已通过幂等检查（SETNX 成功时设置了 ATTR_REDIS_KEY）则直接放行。
+        // 防御拦截器被重复注册（框架注册 + 下游自建注册并存）时，第二次进入读到自己刚写的
+        // PENDING 标记而 409 自己（下游 benefit4j 排查报告 bug2 "第一次必 409" 的框架侧根因）。
+        if (request.getAttribute(ATTR_REDIS_KEY) != null) {
+            return true;
+        }
         // v2.2 P1: 非写方法直接放行（GET/HEAD/OPTIONS 不需要幂等保护）
         if (!WRITE_METHODS.contains(request.getMethod().toUpperCase())) {
             return true;
@@ -142,6 +158,16 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
             return false;
         }
 
+        // v1.2.7: PENDING 并发态区分 —— 同 key 前一请求仍在处理中（尚未回写 OK）。
+        // 与"已缓存响应的重复提交"不同：此时重试可能成功，消息提示稍后重试，便于排查。
+        if (PENDING_MARKER.equals(status)) {
+            log.warn("【Idempotency】同 key 前一请求仍在处理中（PENDING），拒绝并发重复提交 key={}", redisKey);
+            writeJson(response, 409, ApiResponse.fail(ApiCode.DUPLICATE_SUBMIT.getCode(),
+                    "相同 Idempotency-Key 的前一请求仍在处理中，请稍后重试"));
+            return false;
+        }
+
+        log.warn("【Idempotency】未知缓存状态 key={} status={}", redisKey, status);
         writeJson(response, 409, ApiResponse.fail(ApiCode.DUPLICATE_SUBMIT));
         return false;
     }
