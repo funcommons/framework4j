@@ -43,7 +43,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.2.7</version>
+    <version>v1.2.8</version>
 </dependency>
 ```
 
@@ -59,7 +59,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.2.7</version>
+    <version>1.2.8</version>
 </dependency>
 ```
 
@@ -142,6 +142,7 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
+| **v1.2.8** | **framework4j-accesstoken 严重修复**（下游 benefit4j "claims → TokenContext 链路问题"报告，实为误诊）：`AccessTokenAutoConfiguration` 补 `@Import(AccessTokenWebMvcConfig)` —— 与 idempotency v1.2.5 同构的孤儿注册类问题：`TokenInterceptor` Bean 创建了但永不进 MVC 链，`@RequiresToken` 不生效、`TokenContext` 永不填充（所有 `getClaim` 返回 null，不止 app_id）。claims → Redis → TokenContext 链路本身无故障（`WebIntegrationTest` 早已证明，只是测试自建了注册）。附带修复续期潜伏 bug：`renewIncrement != null` 恒真（`asLong` 缺省返装箱 0），`autoRenew` 未配 `renew-increment` 的策略每次校验 `expire(key, 0)` **删除 token 元数据**（第二次请求必 10201），改为 `> 0` 判定。新增注册锁定测试；模块 84 tests 全绿。⚠️ 下游注意：升级后 `@RequiresToken` 开始真正生效（此前鉴权形同虚设）；自建拦截器注册请拆除 |
 | **v1.2.7** | framework4j-idempotency 修复下游 benefit4j 排查报告 bug2（"第一次请求必 409"）：① **重入守卫** —— 同一请求第二次进入 `preHandle`（典型：v1.2.5 框架注册 + 下游自建 workaround 注册未拆除，拦截器跑两遍）时，检测到本请求已通过 SETNX 直接放行，不再读到自己刚写的 PENDING 标记而 409 自己；② **PENDING 并发态区分** —— 同 key 前一请求仍在处理中的 409 消息改为"请稍后重试"并打 WARN，区别于已缓存响应的普通重复提交。新增 2 个锁定测试（重入不触 Redis + PENDING 消息），模块 42 tests 全绿。⚠️ 下游注意：升级 v1.2.5+ 后自建拦截器注册 workaround 应拆除（重入守卫是防御，不是保留 workaround 的理由） |
 | **v1.2.6** | framework4j-id 内部重构（行为零变化）：`@OpenId` 值转换层统一为 `OpenIdLongCodec`（Long 枢轴命名对齐 + 负数错误消息恢复 `ID cannot be negative`）。⚠️ **breaking**：退役并删除 public 类 `fun.commons.framework4j.openid.util.OpenIdTypeUtils`（v2.1 遗留静态工具，容器处理已由 Jackson 序列化/反序列化器承担）——直接引用它的下游需迁移到 `@OpenId` 注解 / `IdObfuscator`；已知下游（MMagiX/benefit4j）均走注解，不受影响。净删 768 行，framework4j-id 337 tests 全绿 |
 | **v1.2.5** | 两个下游排查报告确认的 bug 修复。**framework4j-idempotency**：`IdempotencyAutoConfiguration` 补 `@Import(IdempotencyWebMvcConfig)` —— v2.1 从 @Component 迁移到 @Bean 时注册类被漏挂，拦截器 Bean 创建了但永不进 MVC 拦截链，幂等校验形同虚设（新增容器级注册锁定测试）。**framework4j-sql-tracing**：`SqlTracingBeanPostProcessor` 配置查找改为 per-datasource 优先 + 全局 `framework4j.datasource.sql-tracing.*` 兜底 —— 此前只查 per-datasource，只配全局时主开关亮了但 filter 静默不注入；跳过注入现在有明确日志（WARN/INFO），bind 异常不再吞掉。⚠️ 下游注意：依赖幂等拦截的接口升级后**开始真正拦截**（重复 `Idempotency-Key` 会返回缓存响应）；sql-tracing 只配了全局 prefix 的应用升级后 SQL 会开始带 trace_id 注释 |

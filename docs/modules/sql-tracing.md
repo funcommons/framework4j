@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-sql-tracing</artifactId>
-    <version>1.2.7</version>
+    <version>1.2.8</version>
 </dependency>
 ```
 
