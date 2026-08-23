@@ -34,7 +34,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-cache</artifactId>
-    <version>1.2.7</version>
+    <version>1.2.8</version>
 </dependency>
 ```
 

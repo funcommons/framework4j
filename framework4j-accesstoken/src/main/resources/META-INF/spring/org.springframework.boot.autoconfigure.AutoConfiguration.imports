@@ -1,1 +1,2 @@
 fun.commons.framework4j.accesstoken.config.AccessTokenAutoConfiguration
+fun.commons.framework4j.accesstoken.config.AccessTokenWebMvcConfig

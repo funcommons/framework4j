@@ -14,15 +14,28 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 
+/**
+ * AccessToken 自动配置。
+ * <p>
+ * v1.2.8 修复（下游 benefit4j 排查："claims → TokenContext 链路问题"，实际根因是注册缺失）：
+ * {@code @Import} {@link AccessTokenWebMvcConfig}。此前该注册类有 {@code @Configuration}
+ * 但既不在 {@code AutoConfiguration.imports}、也未被本类引入（与 idempotency v1.2.5 修复
+ * 同构的孤儿类问题）—— {@code TokenInterceptor} Bean 创建了但永不进 MVC 拦截链，
+ * {@code @RequiresToken} 不生效、{@code TokenContext} 永不填充（所有 {@code getClaim} 返回 null）。
+ * claims → Redis → TokenContext 链路本身无故障（{@code WebIntegrationTest} 早已证明，
+ * 只是测试自建了拦截器注册）。消费方不要自行注册 {@code TokenInterceptor}。
+ */
 @Slf4j
 @AutoConfiguration
 @ConditionalOnClass({StringRedisTemplate.class, MultiRedisManager.class})
 @EnableConfigurationProperties(AccessTokenProperties.class)
 @ConditionalOnProperty(prefix = "framework4j.access-token", name = "enabled", havingValue = "true")
+@Import(AccessTokenWebMvcConfig.class)
 @Validated
 public class AccessTokenAutoConfiguration {
 

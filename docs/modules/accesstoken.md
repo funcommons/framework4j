@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-accesstoken</artifactId>
-    <version>1.2.7</version>
+    <version>1.2.8</version>
 </dependency>
 <!-- 自动引入 framework4j-redis -->
 ```
@@ -170,6 +170,12 @@ public class RefreshTokenService {
 1. 提取 `Authorization: Bearer &lt;token&gt;`
 2. `TokenUtils.parseToken` 验签 + 过期检查
 3. 按 `annotation.type()` 分流到 `AccessTokenValidationStrategy` 或 `RefreshTokenValidationStrategy`
+
+&gt; **注册方式（v1.2.8+）**：由 `AccessTokenAutoConfiguration` 通过 `@Import(AccessTokenWebMvcConfig)`
+&gt; 自动注册，路径 `framework4j.access-token.path-patterns`（默认 `/**`）/
+&gt; `exclude-path-patterns`。**消费方不要自行注册 `TokenInterceptor`**（v1.2.7 及以前该注册类
+&gt; 是孤儿 —— 拦截器永不进 MVC 链，`@RequiresToken` 不生效、`TokenContext` 永不填充、
+&gt; 所有 `getClaim` 返回 null；升级到 v1.2.8 即修复，自建注册请拆除）。
 
 ### `TokenContext`（ThreadLocal）
 

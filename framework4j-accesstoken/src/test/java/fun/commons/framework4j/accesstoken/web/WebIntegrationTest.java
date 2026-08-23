@@ -4,7 +4,6 @@ import fun.commons.framework4j.accesstoken.annotation.RequiresToken;
 import fun.commons.framework4j.accesstoken.context.TokenContext;
 import fun.commons.framework4j.accesstoken.core.AccessTokenGenerator;
 import fun.commons.framework4j.accesstoken.exception.AuthException;
-import fun.commons.framework4j.accesstoken.interceptor.TokenInterceptor;
 import fun.commons.framework4j.redis.annotation.RedisOn;
 import fun.commons.framework4j.redis.manager.MultiRedisManager;
 import jakarta.annotation.Resource;
@@ -20,8 +19,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
-import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -41,7 +38,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @since 1.0.0
  */
 @Slf4j
-@SpringBootTest(classes = WebIntegrationTest.TestConfiguration.class, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// v1.2.8: TokenInterceptor 改由框架自动注册（@Import AccessTokenWebMvcConfig），
+// 本测试不再自建注册，路径模式走属性配置（原自建 /test/** + 排除 /test/public 等价迁移）。
+@SpringBootTest(classes = WebIntegrationTest.TestConfiguration.class,
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = {
+                "framework4j.access-token.path-patterns=/test/**",
+                "framework4j.access-token.exclude-path-patterns=/test/public"
+        })
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @RedisOn("default")
@@ -258,21 +262,11 @@ class WebIntegrationTest {
 
     @org.springframework.boot.SpringBootConfiguration
     @org.springframework.boot.autoconfigure.EnableAutoConfiguration
-    static class TestConfiguration implements WebMvcConfigurer {
-
-        @Autowired
-        private TokenInterceptor tokenInterceptor;
+    static class TestConfiguration {
 
         @Bean
         public TestController testController() {
             return new TestController();
-        }
-
-        @Override
-        public void addInterceptors(InterceptorRegistry registry) {
-            registry.addInterceptor(tokenInterceptor)
-                    .addPathPatterns("/test/**")
-                    .excludePathPatterns("/test/public");
         }
 
         @Bean
