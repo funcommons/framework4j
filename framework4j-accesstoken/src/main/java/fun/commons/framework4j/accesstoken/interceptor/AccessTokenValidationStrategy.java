@@ -118,7 +118,10 @@ public class AccessTokenValidationStrategy {
         Boolean autoRenew = asBoolean(policySnapshot.get("autoRenew"));
         Long renewIncrement = asLong(policySnapshot.get("renewIncrement"));
         Long renewedTtl = null;
-        if (Boolean.TRUE.equals(autoRenew) && renewIncrement != null) {
+        // v1.2.8 修复：asLong 对缺省值返回 0（装箱后永不为 null），原 renewIncrement != null
+        // 恒真 → autoRenew 策略未配 renew-increment 时 expire(key, 0) 会【删除】metadata key，
+        // 该 token 第二次请求必 10201。改为 > 0 判定，缺省落 else 分支按 policyExpire 续期。
+        if (Boolean.TRUE.equals(autoRenew) && renewIncrement != null && renewIncrement > 0) {
             redisTemplate.expire(redisKey, renewIncrement, TimeUnit.SECONDS);
             renewedTtl = renewIncrement;
         } else {

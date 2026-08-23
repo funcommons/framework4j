@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.2.7`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.2.8`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
@@ -102,6 +102,8 @@ When changing the obfuscator, run the regression suite under `framework4j-id/src
 ### AccessToken
 
 `AccessTokenAutoConfiguration` registers `AccessTokenGenerator` (JWT issuance + Redis state for access tokens) and `RefreshTokenService` (refresh token family + Lua atomic rotation + poison pill + maxRotations). `TokenInterceptor` (registered in `AccessTokenWebMvcConfig`) routes by `@RequiresToken.type()` to `AccessTokenValidationStrategy` (default) or `RefreshTokenValidationStrategy`. Both pull their `StringRedisTemplate` via `MultiRedisManager.getStringRedisTemplate(redisName)` — the module **requires** `framework4j-redis` even for a single Redis. Policies (login/reset/invite/...) are configured under `framework4j.access-token.policies.<TOKEN_TYPE>`. The Redis key prefix uses `spring.application.name` (mandatory — missing `spring.application.name` will fail startup). Interceptor path patterns are configurable via `framework4j.access-token.path-patterns` / `exclude-path-patterns`.
+
+> **v1.2.8 registration fix (downstream benefit4j "claims → TokenContext" report — misdiagnosed)**: `AccessTokenAutoConfiguration` now `@Import`s `AccessTokenWebMvcConfig` — same orphan-class pattern as idempotency v1.2.5: the registration class had `@Configuration` but was loaded nowhere, so `TokenInterceptor` never entered the MVC chain, `@RequiresToken` was never enforced, and `TokenContext` was never populated (**every** `getClaim` returned null). The claims → Redis → TokenContext chain itself was always healthy (proven by `WebIntegrationTest`, which registered the interceptor itself). Consumers must not register `TokenInterceptor` themselves. Also fixed a latent renew bug the double-registration exposed: `renewIncrement != null` was always true (`asLong` returns boxed 0, never null), so `autoRenew` policies without `renew-increment` ran `expire(key, 0)` — **deleting the token metadata on first use** (second request → 10201). Condition is now `renewIncrement > 0`.
 
 ### Idempotency (framework4j-idempotency)
 
