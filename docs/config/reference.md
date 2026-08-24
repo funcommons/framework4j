@@ -64,6 +64,12 @@
 | `enabled` | `true` | 是否启用 |
 | `encryption-key` | — | AES-256-GCM 密钥（必须配置，否则 TypeHandler 不注册） |
 
+### framework4j.transport
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `true` | 是否启用 HTTP 传输抽象（默认装配 RestTemplateHttpTransport） |
+
 ### framework4j.idempotency
 
 | 配置项 | 默认值 | 说明 |

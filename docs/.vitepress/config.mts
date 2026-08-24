@@ -59,6 +59,12 @@ export default defineConfig({
             { text: '幂等键', link: '/modules/idempotency' },
             { text: '多级缓存', link: '/modules/cache' },
           ]
+        },
+        {
+          text: '集成',
+          items: [
+            { text: 'HTTP 传输', link: '/modules/transport' },
+          ]
         }
       ],
       '/config/': [

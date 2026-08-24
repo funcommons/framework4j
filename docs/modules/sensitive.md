@@ -136,6 +136,28 @@ public class EncryptedFieldTypeHandler extends BaseTypeHandler<String> {
 }
 ```
 
+### LazyEncryptedFieldTypeHandler（lazy key 变体，v1.2.9+）
+
+`EncryptedFieldTypeHandler` 构造时固定 `keyBytes`。但当 key 来自 Spring Bean
+（`sensitiveAesKeyBytes`）时，MyBatis 在 Mapper 解析阶段（启动早期）反射实例化
+TypeHandler，此时容器可能未就绪 → 取不到 key → 密钥错位。
+
+`LazyEncryptedFieldTypeHandler` 改为 **lazy key**：无参构造不取 key，每次 `set/get`
+时经 `SpringContextHolder` 从容器取（运行时必就绪），保证 insert/select 用同一真 key：
+
+```java
+@Entity
+public class UbmaApplication {
+    @TableField(typeHandler = LazyEncryptedFieldTypeHandler.class)
+    private String appSecret;   // key 来自 sensitiveAesKeyBytes Bean, 运行时取
+}
+```
+
+- 选用：`EncryptedFieldTypeHandler(byte[])` 适合编译期常量 key；
+  `LazyEncryptedFieldTypeHandler` 适合 key 由 `sensitiveAesKeyBytes` Bean（配置注入）提供。
+- 配套的 `SpringContextHolder`（`sensitive.context` 包）是 TypeHandler 场景专用的容器
+  静态访问器，由 `SensitiveAutoConfiguration` 在配了 `encryption-key` 时注册。
+
 ## 自动装配
 
 - `SensitiveAutoConfiguration` 注册 Jackson 模块（@Sensitive 字段脱敏）

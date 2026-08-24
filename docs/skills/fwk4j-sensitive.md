@@ -28,6 +28,16 @@ public class UserDO {
 
 - 每次加密随机 IV（同明文不同密文）
 - GCM Tag 校验（错误密钥/篡改 → null + warn，不返回明文）
+
+## Lazy key 变体（v1.2.9+）
+
+key 来自 Spring Bean（`sensitiveAesKeyBytes`，配置注入）时，构造时取 key 会因
+MyBatis 启动早期反射实例化而取不到 → 用 lazy 变体，运行时取：
+
+```java
+@TableField(typeHandler = LazyEncryptedFieldTypeHandler.class)
+private String appSecret;   // 每次 set/get 经 SpringContextHolder 取 key
+```
 - `ThreadLocal<Cipher>` 复用
 
 ## 配置
