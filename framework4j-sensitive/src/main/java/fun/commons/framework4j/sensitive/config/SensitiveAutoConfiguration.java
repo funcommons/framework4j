@@ -1,5 +1,6 @@
 package fun.commons.framework4j.sensitive.config;
 
+import fun.commons.framework4j.sensitive.context.SpringContextHolder;
 import fun.commons.framework4j.sensitive.typehandler.EncryptedFieldTypeHandler;
 import fun.commons.framework4j.sensitive.util.AesGcmCryptoUtil;
 import lombok.extern.slf4j.Slf4j;
@@ -49,5 +50,16 @@ public class SensitiveAutoConfiguration {
         }
         log.info("【Sensitive】encryption-key 已配置（长度={}），AES-256-GCM 密钥派生完成", raw.length());
         return AesGcmCryptoUtil.deriveKey(raw);
+    }
+
+    /**
+     * Spring 容器静态访问器（供 {@link fun.commons.framework4j.sensitive.typehandler.LazyEncryptedFieldTypeHandler}
+     * 等 MyBatis 反射实例化的 TypeHandler 运行时取 key Bean）。
+     * <p>与 sensitiveAesKeyBytes 同条件（配了 encryption-key 才需要 lazy handler）。
+     */
+    @Bean
+    @ConditionalOnProperty(prefix = "framework4j.sensitive", name = "encryption-key")
+    public SpringContextHolder framework4jSensitiveContextHolder() {
+        return new SpringContextHolder();
     }
 }

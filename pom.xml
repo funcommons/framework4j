@@ -7,7 +7,7 @@
 
     <groupId>fun.commons</groupId>
     <artifactId>framework4j</artifactId>
-    <version>1.2.8</version>
+    <version>1.2.9</version>
     <packaging>pom</packaging>
 
     <name>Commons SDK</name>
@@ -28,6 +28,7 @@
         <module>framework4j-cache</module>
         <module>framework4j-audit</module>
         <module>framework4j-sensitive</module>
+        <module>framework4j-transport</module>
         <module>framework4j-compat-test</module>
         <module>framework4j-all</module>
     </modules>
