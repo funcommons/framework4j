@@ -64,3 +64,32 @@ framework4j:
   sensitive:
     enabled: true
     encryption-key: demo-aes-key-change-in-production!!
+
+  # ============ v2.3.0 动态追踪日志 ============
+  tracelog:
+    enabled: true
+    redis-name: default
+    storage:
+      key-prefix: trace_log
+      global-max-traces: 10000     # demo 调小
+      trace-ttl-seconds: 3600      # demo 1h
+    collection:
+      worker-count: 2
+      flush-batch-size: 100
+      flush-interval-ms: 200
+      rate-limit-per-trace-per-second: 100
+      fallback-dir: /tmp/framework4j-tracelog-fallback
+    switch:
+      channel: channel:log_switch
+      transport: pubsub
+      resync-interval-seconds: 5
+    elevation:
+      allowed-packages:
+        - fun.commons.framework4j.demo
+      default-level: DEBUG
+    api:
+      require-auth: false         # demo 简化关闭鉴权
+      max-return-logs: 500
+    console:
+      enabled: true
+      path: /tracelog.html

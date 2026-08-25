@@ -95,6 +95,13 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- TraceLog 模块 (v2.3.0 动态追踪日志) -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-tracelog</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Idempotency 模块 -->
         <dependency>
             <groupId>fun.commons</groupId>

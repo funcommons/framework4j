@@ -29,6 +29,7 @@
         <module>framework4j-audit</module>
         <module>framework4j-sensitive</module>
         <module>framework4j-transport</module>
+        <module>framework4j-tracelog</module>
         <module>framework4j-compat-test</module>
         <module>framework4j-all</module>
     </modules>
@@ -79,6 +80,11 @@
         <assertj.version>3.27.3</assertj.version>
         <jacoco.version>0.8.13</jacoco.version>
         <jacoco.coverage.min>0.80</jacoco.coverage.min>
+
+        <!-- v2.3: 追踪日志模块依赖 -->
+        <logstash-logback.version>8.0</logstash-logback.version>
+        <disruptor.version>3.4.4</disruptor.version>
+        <embedded-redis.version>0.7.3</embedded-redis.version>
     </properties>
 
     <dependencyManagement>
@@ -156,6 +162,23 @@
                 <version>${h2.version}</version>
             </dependency>
 
+            <!-- v2.3: 追踪日志模块依赖 -->
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lmax</groupId>
+                <artifactId>disruptor</artifactId>
+                <version>${disruptor.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>it.ozimov</groupId>
+                <artifactId>embedded-redis</artifactId>
+                <version>${embedded-redis.version}</version>
+            </dependency>
+
             <!-- ByteBuddy for Mockito -->
             <dependency>
                 <groupId>net.bytebuddy</groupId>
@@ -226,6 +249,11 @@
               <dependency>
                 <groupId>fun.commons</groupId>
                 <artifactId>framework4j-accesstoken</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>fun.commons</groupId>
+                <artifactId>framework4j-tracelog</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
