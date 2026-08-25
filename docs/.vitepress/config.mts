@@ -64,6 +64,7 @@ export default defineConfig({
           text: '集成',
           items: [
             { text: 'HTTP 传输', link: '/modules/transport' },
+            { text: '动态追踪日志', link: '/modules/tracelog' },
           ]
         }
       ],
@@ -115,6 +116,13 @@ export default defineConfig({
             { text: 'SQL 追踪', link: '/skills/fwk4j-sql-tracing' },
             { text: '分布式 ID', link: '/skills/fwk4j-id' },
             { text: '时间处理', link: '/skills/fwk4j-datetime' },
+          ]
+        },
+        {
+          text: '集成',
+          items: [
+            { text: 'HTTP 传输', link: '/skills/fwk4j-transport' },
+            { text: '动态追踪日志', link: '/skills/fwk4j-tracelog' },
           ]
         }
       ]

@@ -70,6 +70,30 @@
 |---|---|---|
 | `enabled` | `true` | 是否启用 HTTP 传输抽象（默认装配 RestTemplateHttpTransport） |
 
+### framework4j.tracelog
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 是否启用动态追踪日志（opt-in，避免无意识写 Redis） |
+| `redis-name` | `default` | 日志存储与开关同步用的 Redis 数据源 |
+| `storage.key-prefix` | `trace_log` | 日志 List Key 前缀（`{prefix}:{traceId}`） |
+| `storage.global-max-traces` | `100000` | 全局 trace 数上限 |
+| `storage.trace-ttl-seconds` | `86400` | 单 trace 日志保留时长（24h） |
+| `storage.single-trace-max-logs` | `5000` | 单 trace 日志条数上限（LTRIM 裁剪） |
+| `collection.flush-batch-size` | `500` | Pipeline 批写大小 |
+| `collection.flush-interval-ms` | `500` | 批写间隔 |
+| `collection.rate-limit-per-trace-per-second` | `200` | 单 trace 采集限速 |
+| `collection.fallback-dir` | `/var/log/framework4j-tracelog/fallback` | Redis 故障降级目录（启动硬失败，容器需挂载） |
+| `sync.channel` | `channel:log_switch` | 开关广播频道（Pub/Sub） |
+| `sync.transport` | `pubsub` | 开关同步方式（`pubsub` / `streams`） |
+| `sync.max-ttl-seconds` | `3600` | 开关 TTL 上限 |
+| `elevation.allowed-packages` | `com.yourcompany` | 提权作用域包路径白名单 |
+| `elevation.default-level` | `DEBUG` | 提权默认级别 |
+| `api.require-auth` | `true` | 控制台 API 是否鉴权（true 时必须实现 TraceLogAuthValidator，否则启动 fail-fast） |
+| `api.max-return-logs` | `1000` | 单次查询最大返回条数 |
+| `export.enabled` | `true` | 是否启用导出 |
+| `console.enabled` | `true` | 是否暴露控制台页面（`/tracelog/index.html`） |
+
 ### framework4j.idempotency
 
 | 配置项 | 默认值 | 说明 |
