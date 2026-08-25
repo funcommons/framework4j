@@ -2,8 +2,8 @@
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-  <!-- v2.3.0 动态追踪日志：提权过滤器（按 MDC 中的 DYNAMIC_LOG_LEVEL 放行） -->
-  <turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
+  <!-- 动态追踪日志(framework4j-tracelog): TurboFilter/Appender 由 TraceLogBeansConfig
+       编程式注册 (依赖 Spring Bean, logback 声明会因无无参构造失败), 此处无需声明 -->
 
   <!-- 控制台 appender -->
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -12,16 +12,8 @@
     </encoder>
   </appender>
 
-  <!-- v2.3.0 动态追踪日志：异步 Redis 采集（业务日志自动写入 trace_log:{traceId}） -->
-  <appender name="ASYNC_TRACE_LOG" class="fun.commons.framework4j.tracelog.appender.AsyncRedisLogAppender">
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-      <customFields>{"app":"framework4j-demo"}</customFields>
-    </encoder>
-  </appender>
-
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
-    <appender-ref ref="ASYNC_TRACE_LOG"/>
   </root>
 
   <!-- 演示包 DEBUG 级别（默认会被拦截，提权后通过 DynamicLevelTurboFilter 放行） -->

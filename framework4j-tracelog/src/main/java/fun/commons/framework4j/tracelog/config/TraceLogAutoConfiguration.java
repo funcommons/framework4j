@@ -45,11 +45,14 @@ public class TraceLogAutoConfiguration {
     /**
      * 从 {@link MultiRedisManager} 按 {@code redis-name} 解析得到 {@link StringRedisTemplate}。
      * <p>
-     * 注册为同名 Bean，覆盖 {@code spring-boot-starter-data-redis} 默认 Bean（若有）。
+     * Bean 名 {@code traceLogStringRedisTemplate} —— 不得命名为 stringRedisTemplate：
+     * 与 Spring Boot RedisAutoConfiguration / framework4j-redis 的同名 Bean 冲突
+     * （BeanDefinitionOverrideException，Spring Boot 默认禁止覆盖）。
+     * 消费方统一经 {@code @Qualifier("traceLogStringRedisTemplate")} 注入。
      */
-    @Bean
-    public StringRedisTemplate stringRedisTemplate(MultiRedisManager multiRedisManager,
-                                                  TraceLogProperties props) {
+    @Bean("traceLogStringRedisTemplate")
+    public StringRedisTemplate traceLogStringRedisTemplate(MultiRedisManager multiRedisManager,
+                                                           TraceLogProperties props) {
         return multiRedisManager.getStringRedisTemplate(props.getRedisName());
     }
 

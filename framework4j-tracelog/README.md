@@ -11,7 +11,7 @@
 | 必需依赖 | `framework4j-redis`、`framework4j-api`、`framework4j-web`（统一响应信封 + TraceContext） |
 | 可选依赖 | `framework4j-sql-tracing`（traceId 注入 MDC）、`framework4j-accesstoken`（取 userId）、`framework4j-audit`（开关审计） |
 | 默认开关 | `false`（opt-in，避免无意识开启写入 Redis） |
-| 当前版本 | **v1.3.0**（已落地，24 个 Java + 1 HTML + 7 测试已 install 到本地 Maven） |
+| 当前版本 | **v1.3.1**（已落地，24 个 Java + 1 HTML + 7 测试）|
 
 ## 核心能力
 
@@ -44,7 +44,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tracelog</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
 </dependency>
 ```
 
@@ -62,19 +62,26 @@ framework4j:
 
 ### 3. Logback 配置（logback-spring.xml）
 
+> **不要在 logback-spring.xml 声明 TurboFilter / AsyncRedisLogAppender** ——
+> 两者依赖 Spring Bean（TraceLogStore/Properties），由 `TraceLogBeansConfig`
+> 编程式注册（TurboFilter 加入 LoggerContext，Appender 自动挂到 root logger）。
+> logback 声明会因无无参构造抛 `NoSuchMethodException` 启动失败。
+
+唯一要做的：把业务包 logger 设为 DEBUG（提权生效前提，平时由 TurboFilter 拦下）：
+
 ```xml
 <configuration>
-  <!-- 动态提权过滤器（业务代码零侵入） -->
-  <turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
-  
-  <!-- 异步 Redis 采集 -->
-  <appender name="ASYNC_REDIS" class="fun.commons.framework4j.tracelog.appender.AsyncRedisLogAppender">
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}] - %msg%n</pattern>
+    </encoder>
   </appender>
-  
   <root level="INFO">
-    <appender-ref ref="ASYNC_REDIS"/>
+    <appender-ref ref="STDOUT"/>
   </root>
+  <!-- 业务包 DEBUG: 平时被 TurboFilter 拦下, 提权后放行 -->
+  <logger name="com.yourcompany" level="DEBUG"/>
 </configuration>
 ```
 

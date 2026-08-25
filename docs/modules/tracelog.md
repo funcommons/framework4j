@@ -19,7 +19,7 @@ DEBUG/TRACE，日志异步聚合到共享 Redis（多节点同一 traceId 写同
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tracelog</artifactId>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
 </dependency>
 ```
 
@@ -41,38 +41,26 @@ framework4j:
 
 ### 3. Logback 配置（logback-spring.xml）
 
+> **不要在 logback-spring.xml 声明 TurboFilter / AsyncRedisLogAppender** ——
+> 两者依赖 Spring Bean，由 `TraceLogBeansConfig` 编程式注册（Appender 自动挂 root）。
+> logback 声明会因无无参构造抛 `NoSuchMethodException` 启动失败。
+
+唯一要做的：业务包 logger 设 DEBUG（提权生效前提，平时由 TurboFilter 拦下，开销可忽略）：
+
 ```xml
 <configuration>
   <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-
-  <!-- 动态提权过滤器（业务代码零侵入） -->
-  <turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
-
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}] - %msg%n</pattern>
     </encoder>
   </appender>
-
-  <!-- 异步 Redis 采集（命中的日志写入 trace_log:{traceId}） -->
-  <appender name="ASYNC_TRACE_LOG" class="fun.commons.framework4j.tracelog.appender.AsyncRedisLogAppender">
-    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
-      <customFields>{"app":"my-app"}</customFields>
-    </encoder>
-  </appender>
-
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
-    <appender-ref ref="ASYNC_TRACE_LOG"/>
   </root>
-
-  <!-- 业务包设 DEBUG: 平时被 TurboFilter 拦下, 提权后放行 -->
   <logger name="com.yourcompany" level="DEBUG"/>
 </configuration>
 ```
-
-&gt; **注意**：提权生效的前提是业务 logger 级别 ≤ DEBUG（否则日志事件根本不会生成），
-&gt; 平时由 TurboFilter 拦下不输出/不采集，开销可忽略。
 
 ### 4. 鉴权 SPI（**必须实现**，`require-auth=true` 且未配置时启动 fail-fast）
 

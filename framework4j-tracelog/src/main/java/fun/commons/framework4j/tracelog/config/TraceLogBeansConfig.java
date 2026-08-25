@@ -62,7 +62,7 @@ public class TraceLogBeansConfig {
 
     @Bean
     @ConditionalOnMissingBean
-    public TraceLogStore traceLogStore(StringRedisTemplate stringRedisTemplate,
+    public TraceLogStore traceLogStore(@org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate stringRedisTemplate,
                                        TraceLogProperties props,
                                        TenantKeyResolver tenantKeyResolver) {
         log.info("【TraceLog】创建 TraceLogStore");
@@ -72,7 +72,7 @@ public class TraceLogBeansConfig {
     @Bean
     @ConditionalOnMissingBean
     public FallbackReplayer fallbackReplayer(TraceLogProperties props,
-                                             StringRedisTemplate redis,
+                                             @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis,
                                              LocalFallbackWriter fallbackWriter,
                                              TraceLogStore store) {
         log.info("【TraceLog】创建 FallbackReplayer");
@@ -108,7 +108,7 @@ public class TraceLogBeansConfig {
     @Bean
     @ConditionalOnMissingBean
     public SwitchPubSubListener switchPubSubListener(TraceLogProperties props,
-                                                     StringRedisTemplate redis,
+                                                     @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis,
                                                      SwitchRuleCache cache,
                                                      RedisMessageListenerContainer container) {
         return new SwitchPubSubListener(props, redis, cache, container);
@@ -117,7 +117,7 @@ public class TraceLogBeansConfig {
     @Bean
     @ConditionalOnMissingBean
     public SwitchStreamsListener switchStreamsListener(TraceLogProperties props,
-                                                       StringRedisTemplate redis,
+                                                       @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis,
                                                        SwitchRuleCache cache) {
         return new SwitchStreamsListener(props, redis, cache);
     }
@@ -125,7 +125,7 @@ public class TraceLogBeansConfig {
     @Bean
     @ConditionalOnMissingBean
     public SwitchResyncScheduler switchResyncScheduler(TraceLogProperties props,
-                                                       StringRedisTemplate redis,
+                                                       @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis,
                                                        SwitchRuleCache cache) {
         return new SwitchResyncScheduler(props, redis, cache);
     }
@@ -180,7 +180,7 @@ public class TraceLogBeansConfig {
     public TraceLogQueryController traceLogQueryController(TraceLogProperties props,
                                                           TraceLogStore store,
                                                           LogExporter exporter,
-                                                          StringRedisTemplate redis,
+                                                          @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis,
                                                           SwitchRateLimiter switchRateLimiter,
                                                           TenantKeyResolver tenantKeyResolver,
                                                           ObjectProvider<SwitchStreamsListener> streamsListenerProvider,

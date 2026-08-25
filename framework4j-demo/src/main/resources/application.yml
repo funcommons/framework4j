@@ -79,7 +79,7 @@ framework4j:
       flush-interval-ms: 200
       rate-limit-per-trace-per-second: 100
       fallback-dir: /tmp/framework4j-tracelog-fallback
-    switch:
+    sync:
       channel: channel:log_switch
       transport: pubsub
       resync-interval-seconds: 5

@@ -17,12 +17,8 @@ framework4j:
 ```
 
 ```xml
-<!-- 2. logback-spring.xml: TurboFilter + 异步 Redis Appender -->
-<turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
-<appender name="ASYNC_TRACE_LOG" class="fun.commons.framework4j.tracelog.appender.AsyncRedisLogAppender">
-  <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-</appender>
-<root level="INFO"><appender-ref ref="ASYNC_TRACE_LOG"/></root>
+<!-- 2. logback-spring.xml: 只需业务包 DEBUG (TurboFilter/Appender 由 BeansConfig
+     编程式注册挂 root, 在 logback 声明会因无无参构造启动失败) -->
 <logger name="com.yourcompany" level="DEBUG"/>  <!-- 平时被 TurboFilter 拦下 -->
 ```
 
