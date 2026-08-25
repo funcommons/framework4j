@@ -16,7 +16,7 @@ import java.time.Instant;
 @NoArgsConstructor
 public class SwitchRule {
 
-    /** 维度类型: user / trace / url / order */
+    /** 维度类型: user / trace / url / order（统一小写归一, 见 setType） */
     private String type;
 
     /** 维度值: userId / traceId / url pattern / orderId */
@@ -29,10 +29,18 @@ public class SwitchRule {
     private Instant createdAt;
 
     public SwitchRule(String type, String value, String level) {
-        this.type = type;
+        setType(type);
         this.value = value;
         this.level = level;
         this.createdAt = Instant.now();
+    }
+
+    /**
+     * 类型统一小写归一：API 请求体可能传大写（如 "URL"），而匹配侧（TraceLogSwitchInterceptor）
+     * 用小写维度查询；不归一会导致开关落库成功但永不命中。
+     */
+    public void setType(String type) {
+        this.type = type == null ? null : type.toLowerCase(java.util.Locale.ROOT);
     }
 
     /**

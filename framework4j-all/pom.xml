@@ -8,7 +8,7 @@
     <parent>
         <groupId>fun.commons</groupId>
         <artifactId>framework4j</artifactId>
-        <version>1.3.1</version>
+        <version>1.3.2</version>
     </parent>
 
     <artifactId>framework4j-all</artifactId>

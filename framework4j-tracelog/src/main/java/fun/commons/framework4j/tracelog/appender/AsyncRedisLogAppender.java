@@ -63,6 +63,9 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
 
     private Disruptor<RawEvent>[] disruptors;
     private RingBuffer<RawEvent>[] ringBuffers;
+    private BatchWorker[] workers;
+    /** 时间触发刷盘调度器（flushIfDue 的驱动者, 否则未满批的日志永不落 Redis） */
+    private java.util.concurrent.ScheduledExecutorService flushScheduler;
 
     /** traceId → 该链路在本节点已"首次"标记（Lua 仅在真首次执行） */
     private final Set<String> localSeenTraceIds = ConcurrentHashMap.newKeySet();
@@ -93,6 +96,7 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
         Disruptor<RawEvent>[] tmpDisruptors = new Disruptor[workers];
         @SuppressWarnings("unchecked")
         RingBuffer<RawEvent>[] tmpRings = (RingBuffer<RawEvent>[]) new RingBuffer[workers];
+        BatchWorker[] tmpWorkers = new BatchWorker[workers];
 
         for (int i = 0; i < workers; i++) {
             Disruptor<RawEvent> d = new Disruptor<>(
@@ -106,9 +110,25 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
             d.start();
             tmpDisruptors[i] = d;
             tmpRings[i] = d.getRingBuffer();
+            tmpWorkers[i] = handler;
         }
         this.disruptors = tmpDisruptors;
         this.ringBuffers = tmpRings;
+        this.workers = tmpWorkers;
+
+        // 时间触发刷盘: 单 trace 限速 200/s 永远攒不满 500 批, 无定时器则日志永不落 Redis
+        long flushIntervalMs = props.getCollection().getFlushIntervalMs();
+        flushScheduler = java.util.concurrent.Executors.newSingleThreadScheduledExecutor(
+                new NamedThreadFactory("TraceLog-Flush-Scheduler"));
+        flushScheduler.scheduleWithFixedDelay(() -> {
+            for (BatchWorker w : this.workers) {
+                try {
+                    w.flushIfDue();
+                } catch (Exception e) {
+                    log.warn("【TraceLog】定时刷盘异常: {}", e.getMessage());
+                }
+            }
+        }, flushIntervalMs, flushIntervalMs, java.util.concurrent.TimeUnit.MILLISECONDS);
 
         super.start();
         log.info("【TraceLog】AsyncRedisLogAppender 启动: workers={}, buffer-size={}, "
@@ -122,6 +142,9 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
     @Override
     public void stop() {
         super.stop();
+        if (flushScheduler != null) {
+            flushScheduler.shutdown();
+        }
         if (disruptors == null) return;
 
         long timeout = props.getCollection().getShutdownDrainTimeoutSeconds();
@@ -132,6 +155,16 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
                 d.shutdown(timeout, java.util.concurrent.TimeUnit.SECONDS);
             } catch (Exception e) {
                 log.warn("【TraceLog】Disruptor shutdown 异常: {}", e.getMessage());
+            }
+        }
+        // drain 后未满批的残留日志最后刷一次
+        if (workers != null) {
+            for (BatchWorker w : workers) {
+                try {
+                    w.flush();
+                } catch (Exception e) {
+                    log.warn("【TraceLog】停机残留刷盘异常: {}", e.getMessage());
+                }
             }
         }
         log.info("【TraceLog】AsyncRedisLogAppender 已停止: appended={}, dropped={}, flushed={}",

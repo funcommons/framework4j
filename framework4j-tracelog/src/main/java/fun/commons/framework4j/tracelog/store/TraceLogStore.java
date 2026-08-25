@@ -149,9 +149,13 @@ public class TraceLogStore {
     }
 
     private String buildLogKey(String traceId, String tenantPrefix) {
+        // 与写入侧 (AsyncRedisLogAppender) 一致: 先归一化为 32-hex,
+        // 否则查询带横线的 UUID 拼出的 key 与写入 key 不匹配, 永远查不到
+        String normalized = TraceIdNormalizer.normalize(traceId);
+        String id = normalized != null ? normalized : traceId;
         String keyPrefix = props.getStorage().getKeyPrefix();
         String fullKeyPrefix = tenantPrefix == null ? keyPrefix : (tenantPrefix + ":" + keyPrefix);
-        return fullKeyPrefix + ":" + traceId;
+        return fullKeyPrefix + ":" + id;
     }
 
     /**

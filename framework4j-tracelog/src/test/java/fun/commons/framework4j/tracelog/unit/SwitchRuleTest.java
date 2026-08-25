@@ -49,6 +49,17 @@ class SwitchRuleTest {
     }
 
     @Test
+    @DisplayName("type 大小写归一: 大写 URL → 小写 url (匹配侧用小写查询)")
+    void typeNormalizedToLowerCase() {
+        SwitchRule rule = new SwitchRule("URL", "/api/x", "DEBUG");
+        assertThat(rule.getType()).isEqualTo("url");
+        assertThat(rule.redisKey()).isEqualTo("log_switch:id:url:/api/x");
+        SwitchRule parsed = SwitchRule.fromPayload("{\"type\":\"TRACE\",\"value\":\"abc\",\"level\":\"DEBUG\"}");
+        assertThat(parsed).isNotNull();
+        assertThat(parsed.getType()).isEqualTo("trace");
+    }
+
+    @Test
     @DisplayName("转义引号")
     void escapeQuotes() {
         SwitchRule rule = new SwitchRule("user", "name\"with\"quote", "DEBUG");

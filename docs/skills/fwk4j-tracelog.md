@@ -16,10 +16,10 @@ framework4j:
       allowed-packages: [com.yourcompany]   # 提权作用域限制
 ```
 
-```xml
-<!-- 2. logback-spring.xml: 只需业务包 DEBUG (TurboFilter/Appender 由 BeansConfig
-     编程式注册挂 root, 在 logback 声明会因无无参构造启动失败) -->
-<logger name="com.yourcompany" level="DEBUG"/>  <!-- 平时被 TurboFilter 拦下 -->
+```
+2. logback 零改动 —— TurboFilter/Appender 由 BeansConfig 编程式注册挂 root
+   (logback 声明会因无无参构造启动失败)。业务包保持 INFO, 不要设 DEBUG
+   (TurboFilter ACCEPT 在级别检查之前, 提权即放行; logger DEBUG 会全量输出)。
 ```
 
 ```java

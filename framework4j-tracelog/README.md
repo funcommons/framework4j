@@ -44,7 +44,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tracelog</artifactId>
-    <version>1.3.1</version>
+    <version>1.3.2</version>
 </dependency>
 ```
 
@@ -67,7 +67,11 @@ framework4j:
 > 编程式注册（TurboFilter 加入 LoggerContext，Appender 自动挂到 root logger）。
 > logback 声明会因无无参构造抛 `NoSuchMethodException` 启动失败。
 
-唯一要做的：把业务包 logger 设为 DEBUG（提权生效前提，平时由 TurboFilter 拦下）：
+> 同时**不要把业务包 logger 设为 DEBUG** —— Logback TurboFilter 在级别检查**之前**执行，
+> 提权命中时返回 ACCEPT 直接放行（绕过级别）；若 logger 本身 DEBUG，未提权的 DEBUG
+> 事件也会全量输出，失去动态提权意义。业务包保持 INFO 即可：
+
+
 
 ```xml
 <configuration>
@@ -80,8 +84,6 @@ framework4j:
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
   </root>
-  <!-- 业务包 DEBUG: 平时被 TurboFilter 拦下, 提权后放行 -->
-  <logger name="com.yourcompany" level="DEBUG"/>
 </configuration>
 ```
 

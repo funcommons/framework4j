@@ -48,8 +48,8 @@ public class SwitchResyncScheduler {
     /**
      * 周期性重拉（默认 5s）。
      */
-    @Scheduled(fixedDelayString = "#{${framework4j.tracelog.switch.resync-interval-seconds:5} * 1000}",
-            initialDelayString = "#{${framework4j.tracelog.switch.resync-interval-seconds:5} * 1000}")
+    @Scheduled(fixedDelayString = "#{${framework4j.tracelog.sync.resync-interval-seconds:5} * 1000}",
+            initialDelayString = "#{${framework4j.tracelog.sync.resync-interval-seconds:5} * 1000}")
     public void resync() {
         try {
             Map<String, SwitchRule> fresh = scan();

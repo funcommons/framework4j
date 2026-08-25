@@ -100,18 +100,16 @@ public class TraceLogQueryController {
 
         // TTL 上限强制
         long ttl = Math.min(req.getTtlSeconds(), props.getSync().getMaxTtlSeconds());
-        String redisKey = "log_switch:id:" + req.getType() + ":" + req.getValue();
-        redis.opsForValue().set(redisKey, req.getLevel(), Duration.ofSeconds(ttl));
+        // 用 SwitchRule 归一化后的 type（小写）拼 key, 保证与匹配侧/resync 一致
+        SwitchRule rule = new SwitchRule(req.getType(), req.getValue(), req.getLevel());
+        redis.opsForValue().set(rule.redisKey(), req.getLevel(), Duration.ofSeconds(ttl));
 
         // Pub/Sub 或 Streams 广播
-        SwitchRule rule = new SwitchRule(req.getType(), req.getValue(), req.getLevel());
         SwitchStreamsListener streams = streamsListenerProvider.getIfAvailable();
         if ("streams".equalsIgnoreCase(props.getSync().getTransport()) && streams != null) {
             streams.publish(rule);
         } else {
-            String payload = String.format("{\"type\":\"%s\",\"value\":\"%s\",\"level\":\"%s\"}",
-                    req.getType(), req.getValue(), req.getLevel());
-            redis.convertAndSend(props.getSync().getChannel(), payload);
+            redis.convertAndSend(props.getSync().getChannel(), rule.pubSubPayload());
         }
 
         log.info("【TraceLog】开关开启: type={}, value={}, level={}, ttl={}s",

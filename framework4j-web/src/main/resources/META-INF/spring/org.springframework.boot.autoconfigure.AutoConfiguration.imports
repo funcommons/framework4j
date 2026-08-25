@@ -1,1 +1,2 @@
 fun.commons.framework4j.web.config.WebAutoConfiguration
+fun.commons.framework4j.web.config.TraceIdMdcAutoConfiguration

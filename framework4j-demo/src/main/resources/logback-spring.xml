@@ -15,7 +15,4 @@
   <root level="INFO">
     <appender-ref ref="STDOUT"/>
   </root>
-
-  <!-- 演示包 DEBUG 级别（默认会被拦截，提权后通过 DynamicLevelTurboFilter 放行） -->
-  <logger name="fun.commons.framework4j.demo" level="DEBUG"/>
 </configuration>

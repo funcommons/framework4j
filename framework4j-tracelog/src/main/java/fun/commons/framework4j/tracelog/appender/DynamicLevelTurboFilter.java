@@ -15,12 +15,14 @@ import java.util.List;
  * <p>
  * 工作流程：
  * <ol>
- *   <li>全局配置 INFO/WARN/ERROR → {@link FilterReply#NEUTRAL}（走原有逻辑）</li>
- *   <li>全局配置 DEBUG 但当前是 INFO → NEUTRAL</li>
+ *   <li>事件级别 ≥ root 级别（全局该输出的，如 INFO/WARN/ERROR）→
+ *       {@link FilterReply#NEUTRAL}（走原有逻辑）</li>
+ *   <li>事件级别 &lt; root 级别（DEBUG/TRACE）且 logger 不在
+ *       {@code elevation.allowed-packages} 内 → DENY</li>
  *   <li>当前请求线程 MDC 存在 {@code DYNAMIC_LOG_LEVEL}（来自 Interceptor）→
  *       比较提权级别与当前日志级别：
  *       <ul>
- *         <li>提权到 DEBUG，当前 DEBUG/TRACE → ACCEPT（强制放）</li>
+ *         <li>提权到 DEBUG，当前 DEBUG/TRACE → ACCEPT（强制放行，绕过级别检查）</li>
  *         <li>提权到 TRACE，当前 TRACE → ACCEPT</li>
  *         <li>其他 → DENY</li>
  *       </ul>
@@ -28,16 +30,11 @@ import java.util.List;
  *   <li>未提权 → DENY（拦截）</li>
  * </ol>
  *
- * <p>作用域限制：通过 {@code elevation.allowed-packages}（默认 {@code com.yourcompany}）
- * 配置仅提权业务包路径，第三方库保持原级别。
- *
- * <p>Logback 配置：
- * <pre>{@code
- * <configuration>
- *   <turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
- *   ...
- * </configuration>
- * }</pre>
+ * <p>接入方 logback 配置要点：业务包 logger 设 DEBUG（mybatis 等 isDebugEnabled()
+ * guard 型日志才会生成事件，本过滤器才有机会拦截/放行）；未提权的 DEBUG 事件由
+ * 本过滤器 DENY 拦截，不会全量输出。本过滤器由
+ * {@link fun.commons.framework4j.tracelog.config.TraceLogBeansConfig} 编程式注册，
+ * 不要在 logback-spring.xml 中声明。
  *
  * @see <a href="file:../动态追踪日志 SDK 技术方案.md">设计文档 §3.3.3</a>
  */
@@ -68,8 +65,15 @@ public class DynamicLevelTurboFilter extends TurboFilter {
     @Override
     public FilterReply decide(Marker marker, Logger logger, Level level,
                               String format, Object[] params, Throwable t) {
-        // 1. 全局配置能放行 → 走原有逻辑
-        if (level.isGreaterOrEqual(logger.getEffectiveLevel())) {
+        // 1. 基准是 root 级别而非 logger 自身级别:
+        //    业务包 logger 需设 DEBUG (否则 mybatis 等 isDebugEnabled() guard 型日志
+        //    根本不生成事件, 提权无从谈起); 若以 logger 自身级别为基准, 未提权的
+        //    DEBUG 事件也会 NEUTRAL 放行 → 全量输出, 动态提权失效。
+        //    以 root 级别为基准: 全局该输出的 (INFO+) 走原有逻辑, 低于全局级别的
+        //    (DEBUG/TRACE) 由本过滤器按提权状态决定 ACCEPT/DENY。
+        Logger root = logger.getLoggerContext().getLogger(Logger.ROOT_LOGGER_NAME);
+        Level globalLevel = root.getLevel() != null ? root.getLevel() : Level.INFO;
+        if (level.isGreaterOrEqual(globalLevel)) {
             return FilterReply.NEUTRAL;
         }
 
