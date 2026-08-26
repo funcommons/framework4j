@@ -32,6 +32,8 @@ public class TokenInterceptor implements HandlerInterceptor {
     private final StringRedisTemplate redisTemplate;
     private final AccessTokenValidationStrategy accessStrategy;
     private final RefreshTokenValidationStrategy refreshStrategy;
+    /** v1.4.1（Issue #16）：token 校验通过后的角色校验扩展点 */
+    private final RoleAuthorizer roleAuthorizer;
 
     public TokenInterceptor(AccessTokenGenerator generator,
                             AccessTokenProperties properties,
@@ -41,6 +43,7 @@ public class TokenInterceptor implements HandlerInterceptor {
         this.redisTemplate = redisTemplate;
         this.accessStrategy = new AccessTokenValidationStrategy(generator, redisTemplate);
         this.refreshStrategy = new RefreshTokenValidationStrategy(generator, redisTemplate);
+        this.roleAuthorizer = new RoleAuthorizer();
     }
 
     @Override
@@ -73,9 +76,15 @@ public class TokenInterceptor implements HandlerInterceptor {
         }
 
         if ("refresh".equalsIgnoreCase(annotation.type())) {
+            // v1.4.1（Issue #16）：refresh 端点仅做 family 状态校验，不做角色校验
             return refreshStrategy.validate(annotation, payload, request);
         }
         boolean ok = accessStrategy.validate(annotation, payload, request);
+        // v1.4.1（Issue #16 方案 A）：token 校验通过后做角色校验（roles/anyRole 均空时放行）。
+        // 此时 AccessTokenValidationStrategy 已把 Redis claims 注入 TokenContext。
+        if (ok) {
+            roleAuthorizer.check(annotation);
+        }
         // v2.1 功能增强：access token 校验通过后设置 X-Token-Expire-At 响应头
         // 客户端可在剩余 < 5min 时主动调 /v1/auth/refresh 续期
         if (ok) {

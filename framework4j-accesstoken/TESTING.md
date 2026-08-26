@@ -55,6 +55,11 @@
 | **TC-10** | **自定义异常抛出** | @RequiresToken(..., exception=MyEx.class) | 请求无效 Token | 抛出 MyException 而非 AuthException | assertThrows(MyException.class) |
 | **TC-11** | **上下文注入** | 无 | 请求 Token 含 uid=1001 | Controller 中 TokenContext.getClaim("uid") 返回 "1001" | Controller 返回值断言 |
 | **TC-12** | **异步线程丢失验证** | 无 | 主线程获取 uid 成功，开启子线程获取 | 子线程获取为 null | assertNull (验证 ThreadLocal 隔离性) |
+| **TC-R1** | **roles/anyRole 角色校验**（v1.4.1） | @RequiresToken(roles/anyRole) | 令牌 roles 不含所需角色 / 含所需角色 | 前者 10300 FORBIDDEN，后者放行；无角色注解端点不受影响 | RoleAuthIntegrationTest |
+| **TC-R2** | **存量 token fail-closed**（v1.4.1） | @RequiresToken(roles={...}) | 老 token claims 无 roles 键 | 10300 并提示缺少 roles；同一 token 访问无角色端点正常 | RoleAuthIntegrationTest |
+| **TC-R3** | **updateClaims 实时生效**（v1.4.1） | generator.updateClaims | 先 403 → 改角色 → 同一 token 再请求 | 同一 token（未重签）下一请求即通过；离线用户返回 false | RoleAuthIntegrationTest |
+| **TC-R4** | **updateClaims 保留 TTL**（v1.4.1） | generator.updateClaims | 更新前后对比 metadata key TTL | TTL 仅自然衰减（SET KEEPTTL），不得清零/重置 | RoleAuthIntegrationTest |
+| **TC-R5** | **空 path-patterns 跳过注册**（v1.4.1，Issue #17） | path-patterns=[] | 显式空列表 | TokenInterceptor Bean 存在但不进 MVC 拦截链（WARN 日志） | TokenInterceptorEmptyPatternsTest |
 
 ## **5\. 性能与边界测试 (Performance & Boundary)**
 

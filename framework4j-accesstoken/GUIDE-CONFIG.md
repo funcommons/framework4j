@@ -11,6 +11,8 @@
 | `hashSalt` | String | 否 | `""` | Redis Key 哈希盐值，增强安全性 |
 | `expireTime` | long | 否 | `86400` | 全局默认过期时间（秒） |
 | `redisDatasource` | String | 否 | `stringRedisTemplate` | 指定使用的 Redis Bean 名称 |
+| `pathPatterns` | List<String> | 否 | `["/**"]` | 拦截器路径模式。**显式配置空列表时跳过拦截器注册（v1.4.1 起，打 WARN），不拦截任何路径**；想拦截全部请保持默认或移除该配置，关闭模块请用 `enabled: false` |
+| `excludePathPatterns` | List<String> | 否 | `[]` | 排除路径（`pathPatterns` 为空时不生效） |
 
 ### 策略配置
 

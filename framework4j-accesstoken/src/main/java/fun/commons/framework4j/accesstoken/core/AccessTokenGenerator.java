@@ -7,7 +7,9 @@ import fun.commons.framework4j.accesstoken.exception.AuthException;
 import fun.commons.framework4j.accesstoken.util.TokenUtils;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.RedisStringCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.types.Expiration;
 import org.springframework.util.StringUtils;
 
 import java.time.Duration;
@@ -235,6 +237,60 @@ public class AccessTokenGenerator {
             log.error("[AccessToken] revokeByUser failed: {}", e.getMessage(), e);
         }
         return revoked;
+    }
+
+    /**
+     * v1.4.1（Issue #16）：更新指定用户当前 token 的 Redis claims（角色变更实时生效，无需重签 / 重登）。
+     * <p>
+     * 校验链路每次请求都从该用户级 metadata key 读取 claims（而非只信 JWT payload），
+     * 因此调用本方法后，用户已持有的 token 在下一个请求即携带新 claims（含 {@code roles}）。
+     * <ul>
+     *   <li>整包替换 claims map（业务侧为角色事实来源，全量覆盖语义）</li>
+     *   <li>metadata 其余字段（jti / nonce / hardExpireAt / policySnapshot）不变，token 本身无需重签</li>
+     *   <li>TTL 原样保留（SET KEEPTTL，Redis 6.0+）</li>
+     * </ul>
+     * 与 {@link #revokeByUser} 同约定：仅适用于 policy key 只含 {@code uid} 的 token 类型（如 WEB / ADMIN）；
+     * 多字段 key（如 APP 的 uid+dev）会因缺少 key 字段抛 10200。
+     *
+     * @param tokenType token 类型（如 "WEB"）
+     * @param uid       用户 ID
+     * @param claims    新的完整 claims（含 {@code roles}）
+     * @return true=更新成功；false=该用户当前无有效 token（未登录或已过期）
+     */
+    public boolean updateClaims(String tokenType, String uid, Map<String, Object> claims) {
+        AccessTokenProperties.Policy policy = properties.getPolicies().get(tokenType);
+        if (policy == null) {
+            log.warn("[AccessToken] updateClaims: 未知 tokenType={}", tokenType);
+            return false;
+        }
+        if (claims == null) {
+            throw new AuthException(10200, "Claims 不能为 null");
+        }
+
+        String keyValue = extractKeyValue(policy.getKey(), Map.of("uid", uid));
+        String keyHash = TokenUtils.calculateKeyHash(keyValue, properties.getHashSalt());
+        String redisKey = TokenKeyBuilder.accessMetadata(appName, tokenType, keyHash);
+
+        String metadata = redisTemplate.opsForValue().get(redisKey);
+        if (!StringUtils.hasText(metadata)) {
+            log.info("[AccessToken] updateClaims: 用户无有效 token type={} uid={}", tokenType, uid);
+            return false;
+        }
+
+        Map<String, Object> data = fromJson(metadata);
+        data.put("claims", claims);
+        try {
+            redisTemplate.execute((org.springframework.data.redis.core.RedisCallback<Boolean>) connection -> connection.set(
+                    redisKey.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    toJson(data).getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    Expiration.keepTtl(),
+                    RedisStringCommands.SetOption.UPSERT));
+            log.info("[AccessToken] updateClaims: type={} uid={} claimKeys={}", tokenType, uid, claims.keySet());
+            return true;
+        } catch (Exception e) {
+            log.warn("[AccessToken] updateClaims: 存储失败 {}", e.getMessage(), e);
+            throw new AuthException(10500, "Token 存储失败，请稍后重试");
+        }
     }
 
     private String extractKeyValue(List<String> keys, Map<String, Object> claims) {

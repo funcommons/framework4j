@@ -247,6 +247,28 @@ public class AdminController {
 }
 ```
 
+#### 角色鉴权（v1.4.1）
+
+```java
+// ===== 登录时在 claims 携带角色（key 约定为 "roles"） =====
+Map<String, Object> claims = new HashMap<>();
+claims.put("uid", String.valueOf(user.getId()));
+claims.put("roles", user.getRoles());          // 如 ["PLATFORM_ADMIN", "ACCOUNT_ADMIN"]
+tokenGenerator.generateToken("WEB", claims);
+
+// ===== Controller 声明所需角色 =====
+@RequiresToken(value = "WEB", roles = {"PLATFORM_ADMIN"})                     // 必须具备（AND）
+public ApiResponse<Void> importMembers() { ... }
+
+@RequiresToken(value = "WEB", anyRole = {"ACCOUNT_ADMIN", "PLATFORM_ADMIN"})  // 任一即可（OR）
+public ApiResponse<List<Member>> listMembers() { ... }
+
+// ===== 角色变更（升权/降权）实时生效，无需重签 token / 重登 =====
+tokenGenerator.updateClaims("WEB", String.valueOf(uid), newClaims);
+```
+
+> 校验失败返回 `10300 FORBIDDEN`（区别于 `10200` 未认证）。存量老 token 无 `roles` claim 时会被拒（fail-closed），重登或 `updateClaims` 后恢复。详见 [README § 角色鉴权](./README.md)。
+
 #### 手动验证
 
 ```java

@@ -359,6 +359,37 @@ public class AsyncConfig implements AsyncConfigurer {
 
 ---
 
+### Q6: `path-patterns` 配成空列表会怎样？（v1.4.1 行为变更）
+**行为：**
+- v1.4.1 起：`framework4j.access-token.path-patterns: []`（显式空列表）→ **跳过拦截器注册���不拦截任何路径**，启动时打 WARN 日志（`exclude-path-patterns` 此时也不生效）
+- v1.4.0 及以前：空列表经 `addPathPatterns(空)` 的 Spring 语义为**拦截 `/**`**（与"空 = 不拦截"的直觉相反，测试环境误配后整站 401）
+
+**正确姿势：**
+
+```yaml
+framework4j:
+  access-token:
+    path-patterns:        # 删除该配置 → 默认 ["/**"]，拦截全部
+    # path-patterns: []   # 显式空列表 → 不拦截（v1.4.1 起）
+    # path-patterns: ["/**"]  # 显式全拦
+    exclude-path-patterns: ["/public/**"]
+    # enabled: false      # 关闭整个模块请用这个，而不是配空列表
+```
+
+---
+
+### Q7: 升级 v1.4.1 后给接口加了 roles/anyRole，老用户全部 403（10300）？
+**原因：**
+- 角色校验是 **fail-closed** 的：存量 token 签发时 claims 里没有 `roles` 键，新加角色校验的端点会拒绝并返回 `10300`（提示"令牌未携带角色信息"）
+
+**解决方案（任选）：**
+1. **让用户重登**——登录代码在 claims 里写入 `"roles"` 键（`List<String>`），此后 `@RequiresToken(value = "WEB", roles = {...})` / `anyRole = {...}` 正常工作；
+2. **不强制重登**——业务侧角色变更/补发时调用 `accessTokenGenerator.updateClaims("WEB", uid, newClaims)`，校验链路每次请求都从 Redis claims 读取（不是只信 JWT payload），**下一个请求即生效**，token 本身无需重签。
+
+角色变更（升权/降权）同理：调 `updateClaims` 全端实时生效；需要强制下线则用 `revokeByUser(tokenType, uid)`。
+
+---
+
 ## 错误码
 
 | 错误码 | 说明 | HTTP 状态 | 处理建议 |

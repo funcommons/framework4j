@@ -100,7 +100,7 @@ public ApiResponse<LoginVO> refresh() {
 | `framework4j.access-token.hash-salt` | `String` | 必填 | Redis key 哈希盐，环境变量 |
 | `framework4j.access-token.expire-time` | `long` | `7200`（2h） | 全局默认 access TTL（秒） |
 | `framework4j.access-token.redis-name` | `String` | `default` | 用 `framework4j-redis` 的哪个数据源 |
-| `framework4j.access-token.path-patterns` | `List<String>` | `["/**"]` | 拦截器路径模式 |
+| `framework4j.access-token.path-patterns` | `List<String>` | `["/**"]` | 拦截器路径模式。**显式配置为空列表时跳过拦截器注册（v1.4.1 起，打 WARN 日志），不拦截任何路径**；想拦截全部请保持默认 `/**` 或移除该配置。关闭模块用 `enabled: false` |
 | `framework4j.access-token.exclude-path-patterns` | `List<String>` | `[]` | 排除路径 |
 | `framework4j.access-token.policies.<type>.key` | `List<String>` | 必填 | 互斥键字段名（claims 中必含） |
 | `framework4j.access-token.policies.<type>.expire-time` | `Long` | 全局值 | access TTL（秒） |
@@ -121,9 +121,35 @@ public ApiResponse<LoginVO> refresh() {
 public @interface RequiresToken {
     String value();                                    // token 业务类型，如 "user"
     String type() default "access";                    // "access" / "refresh"
+    String[] roles() default {};                       // 要求的角色，全匹配 AND（v1.4.1）
+    String[] anyRole() default {};                     // 要求的角色，任一匹配 OR（v1.4.1）
     Class<? extends Exception> exception() default AuthException.class;
 }
 ```
+
+#### 角色鉴权（v1.4.1 / Issue #16 方案 A）
+
+token 校验通过 ≠ 有权操作。`roles` / `anyRole` 声明接口所需角色（两者同时声明时须都满足）：
+
+```java
+// 生成 token 时在 claims 携带角色（claims key 约定为 "roles"）
+Map<String, Object> claims = new HashMap<>();
+claims.put("uid", "1001");
+claims.put("roles", List.of("PLATFORM_ADMIN", "ACCOUNT_ADMIN"));
+generator.generateToken("WEB", claims);
+
+// 声明式角色校验
+@RequiresToken(value = "WEB", roles = {"PLATFORM_ADMIN"})                     // 必须具备（AND）
+@RequiresToken(value = "WEB", anyRole = {"ACCOUNT_ADMIN", "PLATFORM_ADMIN"})  // 任一即可（OR）
+```
+
+要点：
+
+- **角色从 Redis claims 读取**（`AccessTokenValidationStrategy` 每次请求从用户级 metadata key 加载，不是只信 JWT payload）——角色变更后调用 `AccessTokenGenerator#updateClaims` 即**全端实时生效，无需重签 token / 重登**；
+- 校验失败返回 `10300 FORBIDDEN`（区别于 `10200` 未认证：token 有效但角色不足）；
+- **fail-closed**：声明了角色要求但令牌未携带 `roles` claim 时拒绝——升级后新加角色校验的端点对存量老 token 返回 403，用户重登或业务侧 `updateClaims` 后恢复；
+- `roles` / `anyRole` 均为空（默认）时不做角色校验，存量注解行为不变；
+- `type = "refresh"` 的端点仅做 family 状态校验，不做角色校验。
 
 ### `AccessTokenGenerator`
 
@@ -136,6 +162,14 @@ public class AccessTokenGenerator {
     public boolean isRevoked(String jti);
     public String buildRedisKey(String tokenType, String hash);
     public String getAppName();
+
+    // v1.4.1（Issue #16）：更新在线用户 token 的 Redis claims（角色变更实时生效）。
+    // 整包替换 claims，TTL 原样保留（SET KEEPTTL）；返回 false = 该用户当前无有效 token。
+    // 仅适用于 policy key 只含 uid 的 token 类型（与 revokeByUser 同约定）。
+    public boolean updateClaims(String tokenType, String uid, Map<String, Object> claims);
+
+    // 按用户强退：删除该用户全部 session + jti 加入撤销 Set
+    public int revokeByUser(String tokenType, String uid);
     
     public record TokenPair(
         String accessToken,
@@ -170,6 +204,7 @@ public class RefreshTokenService {
 1. 提取 `Authorization: Bearer <token>`
 2. `TokenUtils.parseToken` 验签 + 过期检查
 3. 按 `annotation.type()` 分流到 `AccessTokenValidationStrategy` 或 `RefreshTokenValidationStrategy`
+4. access 校验通过后执行角色校验（`RoleAuthorizer`，`roles`/`anyRole` 非空时，v1.4.1）
 
 > **注册方式（v1.2.8+）**：由 `AccessTokenAutoConfiguration` 通过 `@Import(AccessTokenWebMvcConfig)`
 > 自动注册，路径 `framework4j.access-token.path-patterns`（默认 `/**`）/
