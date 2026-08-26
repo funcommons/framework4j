@@ -226,6 +226,7 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
     private final class BatchWorker implements WorkHandler<RawEvent> {
         private final int shardId;
         private final LogstashEncoder encoder;
+        private final SensitiveLogMasker masker;
         private final List<TraceLogStore.LogItem> pending = new ArrayList<>(props.getCollection().getFlushBatchSize());
         private final Set<String> firstSeenInBatch = new HashSet<>();
         private long lastFlushMs = System.currentTimeMillis();
@@ -235,6 +236,9 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
             this.encoder = new LogstashEncoder();
             this.encoder.setContext(getContext());
             this.encoder.start();
+            this.masker = new SensitiveLogMasker(
+                    props.getCollection().isMaskSensitive(),
+                    props.getCollection().getMaskKeys());
         }
 
         @Override
@@ -296,7 +300,8 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
             try {
                 // 直接 encode 为 byte[] 再解码为字符串（避免 Jackson StringWriter 分配）
                 byte[] bytes = encoder.encode(raw.getRaw());
-                return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
+                // 脱敏在 Worker 线程执行（业务线程零开销）：按 key 匹配 password/token 等字段值
+                return masker.mask(new String(bytes, java.nio.charset.StandardCharsets.UTF_8));
             } catch (Exception e) {
                 log.debug("【TraceLog】序列化失败, 跳过: {}", e.getMessage());
                 return null;

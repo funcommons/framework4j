@@ -11,7 +11,7 @@
 | 必需依赖 | `framework4j-redis`、`framework4j-api`、`framework4j-web`（统一响应信封 + TraceContext） |
 | 可选依赖 | `framework4j-sql-tracing`（traceId 注入 MDC）、`framework4j-accesstoken`（取 userId）、`framework4j-audit`（开关审计） |
 | 默认开关 | `false`（opt-in，避免无意识开启写入 Redis） |
-| 当前版本 | **v1.3.3**（已落地 + 端到端冒烟通过，24 个 Java + 1 HTML + 8 测试类）|
+| 当前版本 | **v1.4.0**（已落地 + 端到端冒烟通过 + 敏感字段脱敏，26 个 Java + 1 HTML + 10 测试类）|
 
 ## 核心能力
 
@@ -28,6 +28,7 @@
 | **多租户隔离** | `tenant.enabled=true` + `tenant.key-spel` → Redis Key 加租户前缀 |
 | **Micrometer 指标** | 6 类指标（appended/dropped/flushed/queue-depth/flush-duration/redis-fail） |
 | **导出能力** | txt / json + gzip，单文件大小可配 |
+| **敏感字段脱敏** | 采集进 Redis 前按 key 匹配（password/token/cookie…），值替换 `******`；Worker 线程执行，业务线程零开销；`collection.mask-sensitive` 默认开启，`collection.mask-keys` 可配 |
 | **纯 HTML 控制台** | 单文件 10.5KB，零三方依赖，VS Code 暗色风格 |
 
 ## 非目标（明确不做）
@@ -44,7 +45,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tracelog</artifactId>
-    <version>1.3.3</version>
+    <version>1.4.0</version>
 </dependency>
 ```
 
@@ -118,7 +119,7 @@ public class MyAuthValidator implements TraceLogAuthValidator {
 | 单元测试（默认运行） | `mvn -pl framework4j-tracelog test` | ✅ 34 通过 / 0 失败 |
 | 集成测试（需 Redis） | `mvn -pl framework4j-tracelog test -Dtracelog.integration.redis=true` | ⚠️ 5 跳过（嵌入式 Redis 0.7.3 在部分 Mac 启动失败，优雅降级） |
 
-## 实施状态（v1.3.3）
+## 实施状态（v1.4.0）
 
 | 阶段 | 内容 | 状态 |
 |---|---|---|

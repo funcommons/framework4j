@@ -88,6 +88,14 @@ public class TraceLogProperties {
 
         /** Redis 恢复后回灌探测周期（秒） */
         private long fallbackReplayIntervalSeconds = 30L;
+
+        /** 是否对采集日志做敏感字段脱敏（按 key 匹配，值替换为 ******） */
+        private boolean maskSensitive = true;
+
+        /** 脱敏 key 列表（不区分大小写；匹配 JSON 字段名与 message 中 key=value 形式） */
+        private List<String> maskKeys = List.of(
+                "password", "passwd", "pwd", "token", "access_token", "refresh_token",
+                "authorization", "secret", "api_key", "apikey", "cookie", "set-cookie");
     }
 
     // ==================== 开关同步 ====================

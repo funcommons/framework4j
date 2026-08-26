@@ -2,6 +2,22 @@
 
 本模块遵循 [Semantic Versioning](https://semver.org/)，与 framework4j 全 reactor 统一版本。
 
+## [1.4.0] - 2026-08-26
+
+### Added
+
+- **敏感字段脱敏**（`SensitiveLogMasker`）：采集进 Redis 前按 key 匹配脱敏，值替换 `******`。
+  覆盖两种形态——日志体内 JSON 字段（`"password":"x"`，含 message 里转义嵌套的
+  `\"password\":\"x\"`）与 message 内 kv（`password=x` / `token: x`）。Worker 线程执行，
+  业务线程零开销；`collection.mask-sensitive` 默认开启，`collection.mask-keys` 可配
+  （默认 password/passwd/pwd/token/access_token/refresh_token/authorization/secret/
+  api_key/apikey/cookie/set-cookie）。与 framework4j-sensitive 的按值格式脱敏互补，
+  零跨模块依赖。
+- **4 个运行链路集成测试**（`TraceLogRuntimeIntegrationTest`，真实 Redis）：
+  多节点写同一 traceId 聚合 + 队列仅 1 条 / resync Redis→cache diff 精准失效 /
+  Streams XADD→消���者组→缓存更新→key 删除失效全生命周期 / 停机 drain 未满批日志
+  全部落 Redis（flushed == appended）。
+
 ## [1.3.3] - 2026-08-26
 
 ### Fixed

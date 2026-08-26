@@ -3,7 +3,7 @@
 > 模块代号：`framework4j-tracelog`
 > 配置前缀：`framework4j.tracelog.*`
 > 目标版本：v2.3.0
-> 文档状态：**已实现**（v1.3.3，代码已落地并端到端冒烟通过，详见 §十三 运行链路验证）
+> 文档状态：**已实现**（v1.4.0，代码已落地并端到端冒烟通过 + 敏感字段脱敏，详见 §十三 运行链路验证）
 
 ---
 
@@ -1109,6 +1109,8 @@ public class AccessTokenTraceLogAuthValidator implements TraceLogAuthValidator {
 | `shutdown-drain-timeout-seconds` | `long` | `10` | Graceful shutdown drain 超时 |
 | `fallback-dir` | `String` | `/var/log/framework4j-tracelog/fallback` | Redis 故障时本地降级目录（容器化需 hostPath/PVC） |
 | `fallback-replay-interval-seconds` | `long` | `30` | Redis 恢复后回灌探测周期 |
+| `mask-sensitive` | `boolean` | `true` | 采集进 Redis 前按 key 脱敏（Worker 线程执行） |
+| `mask-keys` | `List<String>` | `password,passwd,pwd,token,access_token,refresh_token,authorization,secret,api_key,apikey,cookie,set-cookie` | 脱敏 key（不区分大小写；匹配 JSON 字段与 message 内 kv 形态） |
 
 ### 4.4 开关同步（Pub/Sub 或 Streams）
 
@@ -1373,7 +1375,7 @@ framework4j-tracelog/
 |---|---|
 | **Redis 内存爆** | 四重保护：全局上限 `global-max-traces`（默认 10w） / 单 List `single-trace-max-logs`（默认 5000） / TTL `trace-ttl-seconds`（默认 24h） / per-trace 速率限制（默认 200 条/秒）。所有阈值均可配置 |
 | **控制台被滥用** | 强制鉴权（`api.require-auth=true`，未配置 `TraceLogAuthValidator` 启动 fail-fast）+ IP 白/黑名单 + 1h TTL + 审计 + 维度频控 |
-| **敏感日志泄漏** | v1.0 框架仅采集 + 暴露 `LogMaskingConverter` 扩展点；**强烈建议接入 `framework4j-sensitive`** v1.1 联动；控制台 HTML 输出做 HTML 转义防 XSS |
+| **敏感日志泄漏** | **v1.4.0 起内置 `SensitiveLogMasker`**：采集进 Redis 前按 key 匹配（password/token/cookie…默认 12 个，可配 `collection.mask-keys`），值替换 `******`；覆盖 JSON 字段（含 message 转义嵌套）与 kv 形态；Worker 线程执行业务零开销；与 `framework4j-sensitive` 的按值格式脱敏（手机号/身份证）互补；控制台 HTML 输出做 HTML 转义防 XSS |
 | **Redis 单点** | 建议消费方用 Redis Cluster / 主从 + 哨兵；Cluster 下启用 `global-queue-shards` 分片避免 `trace_global_queue` 热点 |
 | **网络分区下开关不同步** | 本地兜底（启动 SCAN）+ **`sync.resync-interval-seconds`**（默认 5s，可配置）周期重拉（diff 合并零窗口）；高可用场景建议升级到 Streams（§3.1.4） |
 | **跨租户泄漏** | `tenant.enabled=true` + `tenant.key-spel` → Redis Key 加 `tenantKey:` 前缀；查询接口强校验租户 |
@@ -1604,6 +1606,7 @@ framework4j-tracelog/
 | v1.2 | 2026-08-25 | **代码已落地**：实现 TenantKeyResolver（多租户 SpEL）/ FallbackReplayer（异步回灌）/ SwitchStreamsListener（Redis Streams 替代）/ TraceLogMetrics（Micrometer 6 类指标）/ SwitchRuleCache.valuesOf()（URL pattern Ant 匹配）；LocalFallbackWriter 启动硬失败；framework4j-web 升级为强依赖；删除冗余 GracefulShutdownHook（Disruptor 自带）；删除冗余 lifecycle 包；目录结构更新；已 `mvn install` 到本地 Maven |
 | v1.3.0–v1.3.2 | 2026-08-25 | 接入实战修复（下游反馈）：**编程式注册** TurboFilter/Appender（logback-spring.xml 声明会因无无参构造启动失败，§5.4 重写为"零声明"）；`buildLogKey` 归一化 traceId（带横线 UUID 查询不命中）；`SwitchRule` type 小写归一化（写/读/匹配侧 key 一致）；`StringRedisTemplate` Bean 改名 `traceLogStringRedisTemplate`（避免与 Spring Boot 同名 Bean 冲突）；Interceptor 改拦 `/**` 并排除 tracelog 自身路径；resync SpEL 属性路径修正 `sync.*` |
 | v1.3.3 | 2026-08-26 | **端到端冒烟通过**（§十三）+ 3 个运行链路修复：① SETNX 判定移入 Lua 内部（pipeline 盲发导致多节点重复入队，集成测试锁定）；② `SwitchRuleCache#replaceAll` diff 合并零窗口重拉（原 clear+重放每 5s 瞬时空窗，并发读 0 miss 单测锁定）；③ 查询/导出双字段名兼容 LogstashEncoder 默认名（`logger_name`/`thread_name`/`@timestamp`，控制台字段不再空白）；控制台 `/tracelog.html` view-controller 转发；集成测试回退本机 Redis（db 15 隔离 + flushDb） |
+| v1.4.0 | 2026-08-26 | **新增敏感字段脱敏**（`SensitiveLogMasker`，按 key 匹配，Worker 线程，默认开启可配）；**新增 4 个运行链路集成测试**（多节点聚合 / resync diff / Streams 生命周期 / 停机 drain）；测试 45 → 58 |
 
 ### 实现状态
 
@@ -1638,5 +1641,6 @@ framework4j-tracelog/
 | 6 | txt 导出（gzip）：378B，5 条含 DEBUG/TRACE，字段完整 | ✅ |
 | 7 | 应用重启后���关仍生效（Redis 持久，重拉加载），提权请求仍采到 5 条 | ✅ |
 
-测试汇总（v1.3.3）：**45 通过 / 0 失败 / 0 跳过**
+测试汇总（v1.4.0）：**58 通过 / 0 失败 / 0 跳过**
+（单元 49 = 原 40 + 脱敏 9；集成 9 = Store 5 + 运行链路 4）
 （单元 40 + 集成 5；集成测试优先嵌入式 Redis（16380），失败自动回退本机 Redis **db 15**（`flushDb` 只清测试库，绝不触碰业务库 0））
