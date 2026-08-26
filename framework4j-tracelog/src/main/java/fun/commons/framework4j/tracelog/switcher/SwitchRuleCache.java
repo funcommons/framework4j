@@ -70,11 +70,48 @@ public class SwitchRuleCache {
     }
 
     /**
-     * 清空全部（用于断连重拉时全量替换）。
+     * 清空全部（仅测试/停机用；周期重拉请用 {@link #replaceAll}）。
      */
     public void clear() {
         cache.invalidateAll();
         dimensionIndex.clear();
+    }
+
+    /**
+     * 全量重拉后的 diff 合并（零窗口替换）。
+     * <p>
+     * 相比 {@code clear() + 重放}：新规则先 put、仅精准 invalidate Redis 已失效的条目，
+     * 全程不存在"缓存被清空"的瞬间 —— 周期重拉（默认 5s）不再造成提权请求瞬时 miss。
+     *
+     * <p>并发语义：与 {@link #put}（Pub/Sub 增量）并发安全 ——
+     * pub/sub 消息到达时对应 Redis key 必已写入（控制器先 SET 后 PUBLISH），
+     * 故不会出现在 fresh 快照之外而被误删的活规则；即使极端时序下被误删，
+     * 下轮重拉（≤5s）即恢复。
+     *
+     * @param freshRules Redis SCAN 得到的全量规则
+     * @return 本次失效（删除）的规则条数
+     */
+    public synchronized int replaceAll(java.util.Collection<SwitchRule> freshRules) {
+        java.util.Set<String> freshKeys = new java.util.HashSet<>();
+        if (freshRules != null) {
+            for (SwitchRule rule : freshRules) {
+                if (rule == null || rule.getType() == null || rule.getValue() == null) continue;
+                put(rule);
+                freshKeys.add(key(rule.getType(), rule.getValue()));
+            }
+        }
+        // 精准失效：缓存里有、Redis 快照里没有的（已过期/被删）
+        int removed = 0;
+        for (String k : java.util.List.copyOf(cache.asMap().keySet())) {
+            if (!freshKeys.contains(k)) {
+                int colon = k.indexOf(':');
+                if (colon > 0) {
+                    invalidate(k.substring(0, colon), k.substring(colon + 1));
+                    removed++;
+                }
+            }
+        }
+        return removed;
     }
 
     /**

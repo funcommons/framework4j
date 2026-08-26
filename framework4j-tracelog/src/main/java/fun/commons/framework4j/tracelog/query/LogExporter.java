@@ -75,11 +75,15 @@ public class LogExporter {
             // JSON Lines：原行 + \n
             return (rawJson + "\n").getBytes(StandardCharsets.UTF_8);
         }
-        // 文本格式：提取关键字段做人类可读展示
-        String ts = Instant.now().toString();
+        // 文本格式：提取关键字段做人类可读展示（双字段名兼容 LogstashEncoder 默认名）
+        String ts = firstNonNull(extractField(rawJson, "@timestamp"),
+                extractField(rawJson, "tsIso"));
+        if (ts == null) ts = Instant.now().toString();
         String level = extractField(rawJson, "level");
-        String thread = extractField(rawJson, "thread");
-        String logger = extractField(rawJson, "logger");
+        String thread = firstNonNull(extractField(rawJson, "thread"),
+                extractField(rawJson, "thread_name"));
+        String logger = firstNonNull(extractField(rawJson, "logger"),
+                extractField(rawJson, "logger_name"));
         String message = extractField(rawJson, "message");
         String line = String.format("[%s] [%-5s] [%-20s] [%s] %s%n",
                 ts, level == null ? "" : level,
@@ -87,6 +91,10 @@ public class LogExporter {
                 logger == null ? "" : logger,
                 message == null ? "" : message);
         return line.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static String firstNonNull(String a, String b) {
+        return a != null ? a : b;
     }
 
     private String extractField(String json, String key) {

@@ -53,10 +53,10 @@ public class SwitchResyncScheduler {
     public void resync() {
         try {
             Map<String, SwitchRule> fresh = scan();
-            // 替换式更新：先 clear 再 put 避免脏数据
-            cache.clear();
-            fresh.values().forEach(cache::put);
-            log.debug("【TraceLog】开关规则重拉完成: count={}", fresh.size());
+            // diff 合并（零窗口）：新规则直接覆盖，仅精准失效 Redis 已删除的。
+            // 不用 clear()+重放 —— 那样每轮重拉都产生瞬时空窗，提权请求会周期性 miss。
+            int removed = cache.replaceAll(fresh.values());
+            log.debug("【TraceLog】开关规则重拉完成: count={}, removed={}", fresh.size(), removed);
         } catch (Exception e) {
             log.warn("【TraceLog】开关规则重拉失败: err={}", e.getMessage());
         }

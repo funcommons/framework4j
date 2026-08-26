@@ -8,7 +8,7 @@ import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Spring MVC 集成：注册 {@link TraceLogSwitchInterceptor}。
+ * Spring MVC 集成：注册 {@link TraceLogSwitchInterceptor} + 控制台页面路由。
  * <p>
  * v1.2.5+ 注册模式（修复孤儿类问题）：{@code TraceLogAutoConfiguration} 通过 {@code @Import} 引入本类。
  * 消费方不要自行注册。
@@ -34,5 +34,19 @@ public class TraceLogWebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(props.getApi().getExportPathPatterns())
                 .excludePathPatterns("/tracelog", "/tracelog/**", "/tracelog.html",
                         "/actuator/**", "/error", "/favicon.ico");
+    }
+
+    /**
+     * 控制台入口：{@code console.path}（默认 {@code /tracelog.html}）转发到
+     * classpath 静态资源 {@code /tracelog/index.html}。
+     * <p>静态资源实际路径带目录，对外暴露短路径便于访问与文档一致。
+     */
+    @Override
+    public void addViewControllers(org.springframework.web.servlet.config.annotation.ViewControllerRegistry registry) {
+        if (!props.getConsole().isEnabled()) return;
+        String path = props.getConsole().getPath();
+        if (path == null || path.isBlank()) return;
+        registry.addViewController(path)
+                .setViewName("forward:/tracelog/index.html");
     }
 }

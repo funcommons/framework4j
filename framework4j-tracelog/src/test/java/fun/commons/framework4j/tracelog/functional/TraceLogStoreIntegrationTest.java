@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import redis.embedded.RedisServer;
@@ -18,7 +19,14 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TraceLogStore 集成测试（基于嵌入式 Redis）。
+ * TraceLogStore 集成测试。
+ * <p>
+ * Redis 来源优先级：
+ * <ol>
+ *   <li>嵌入式 Redis（端口 16380，测试自管生命周期）</li>
+ *   <li>本机 Redis（localhost:6379，docker run -p 6379:6379 redis 即可）</li>
+ * </ol>
+ * 两者都不可用时测试跳过（Assumptions）。
  * <p>
  * 验证：
  * <ul>
@@ -29,11 +37,15 @@ import static org.assertj.core.api.Assertions.assertThat;
  * </ul>
  *
  * <p>运行方式：{@code mvn test -Dtracelog.integration.redis=true}
- * （默认跳过 — 嵌入式 Redis 在某些环境无法启动）
  */
-@DisplayName("TraceLogStore 集成测试（嵌入式 Redis）")
+@DisplayName("TraceLogStore 集成测试（嵌入式/本机 Redis）")
 @EnabledIfSystemProperty(named = "tracelog.integration.redis", matches = "true")
 class TraceLogStoreIntegrationTest {
+
+    private static final int EMBEDDED_PORT = 16380;
+    private static final int LOCAL_PORT = 6379;
+    /** 测试专用 db（回退本机 Redis 时绝不触碰业务库 0，且清理用 flushDb 只清本库） */
+    private static final int TEST_DATABASE = 15;
 
     private static RedisServer redisServer;
     private static LettuceConnectionFactory connectionFactory;
@@ -43,23 +55,47 @@ class TraceLogStoreIntegrationTest {
 
     @BeforeAll
     static void startRedis() throws Exception {
+        // 1. 优先尝试嵌入式 Redis
         try {
-            redisServer = new RedisServer(16380);
+            redisServer = new RedisServer(EMBEDDED_PORT);
             redisServer.start();
-            connectionFactory = new LettuceConnectionFactory("localhost", 16380);
-            connectionFactory.afterPropertiesSet();
-            redis = new StringRedisTemplate(connectionFactory);
-            redis.afterPropertiesSet();
+            redisAvailable = connectAndPing(EMBEDDED_PORT);
+        } catch (Exception e) {
+            System.err.println("【集成测试】嵌入式 Redis 启动失败: " + e.getMessage());
+        }
 
+        // 2. 回退到本机 Redis（docker run -p 6379:6379 redis）
+        if (!redisAvailable) {
+            System.err.println("【集成测试】回退尝试本机 Redis localhost:" + LOCAL_PORT);
+            redisAvailable = connectAndPing(LOCAL_PORT);
+        }
+
+        if (redisAvailable) {
             TraceLogProperties props = new TraceLogProperties();
             // 测试用小容量配置便于触发裁剪
             props.getStorage().setGlobalMaxTraces(3);
             props.getStorage().setSingleTraceMaxLogs(5);
             store = new TraceLogStore(redis, props);
-            redisAvailable = true;
+        } else {
+            System.err.println("【集成测试】无可用 Redis（嵌入式 + 本机均失败）, 测试将跳过");
+        }
+    }
+
+    private static boolean connectAndPing(int port) {
+        try {
+            RedisStandaloneConfiguration conf = new RedisStandaloneConfiguration("localhost", port);
+            conf.setDatabase(TEST_DATABASE);
+            connectionFactory = new LettuceConnectionFactory(conf);
+            connectionFactory.afterPropertiesSet();
+            redis = new StringRedisTemplate(connectionFactory);
+            redis.afterPropertiesSet();
+            return "PONG".equalsIgnoreCase(redis.getConnectionFactory().getConnection().ping());
         } catch (Exception e) {
-            System.err.println("【集成测试】嵌入式 Redis 启动失败, 测试将跳过: " + e.getMessage());
-            redisAvailable = false;
+            if (connectionFactory != null) {
+                try { connectionFactory.destroy(); } catch (Exception ignore) { /* nop */ }
+                connectionFactory = null;
+            }
+            return false;
         }
     }
 
@@ -71,8 +107,9 @@ class TraceLogStoreIntegrationTest {
 
     @BeforeEach
     void cleanRedis() {
-        org.junit.jupiter.api.Assumptions.assumeTrue(redisAvailable, "嵌入式 Redis 不可用, 跳过");
-        redis.getConnectionFactory().getConnection().serverCommands().flushAll();
+        org.junit.jupiter.api.Assumptions.assumeTrue(redisAvailable, "Redis 不可用（嵌入式 + 本机）, 跳过");
+        // flushDb 只清 TEST_DATABASE（15），绝不影响本机 Redis 的业务库
+        redis.getConnectionFactory().getConnection().serverCommands().flushDb();
     }
 
     @Test

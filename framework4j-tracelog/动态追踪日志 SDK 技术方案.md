@@ -3,7 +3,7 @@
 > 模块代号：`framework4j-tracelog`
 > 配置前缀：`framework4j.tracelog.*`
 > 目标版本：v2.3.0
-> 文档状态：**已实现**（v1.2，代码已落地，30 源文件 + 1 HTML 已 install 到本地 Maven）
+> 文档状态：**已实现**（v1.3.3，代码已落地并端到端冒烟通过，详见 §十三 运行链路验证）
 
 ---
 
@@ -150,11 +150,12 @@ Console (POST /api/logs/switch)
 
 | 关键点 | 说明 |
 |---|---|
-| **广播频道** | `framework4j.tracelog.switch-channel`（可配置，默认 `channel:log_switch`） |
+| **广播频道** | `framework4j.tracelog.sync.channel`（可配置，默认 `channel:log_switch`） |
 | **Payload** | `{type: "user"\|"url"\|"trace", value: "...", level: "DEBUG"}` |
 | **本地缓存** | Caffeine `Cache<String, SwitchRule>`（容量 10w，TTL 同 Redis 一致） |
 | **本地兜底** | 启动时一次性 `SCAN + MGET log_switch:*` 加载已存在的开关；后续只靠 Pub/Sub 增量 |
-| **降级策略** | Redis Pub/Sub 连接断开时，**每 5s 重新全量拉取一次**（`framework4j.tracelog.switch-resync-interval-seconds`，默认 5s），窗口期变化最多延迟 5s 生效 |
+| **降级策略** | Redis Pub/Sub 连接断开时，**每 5s 重新全量拉取一次**（`framework4j.tracelog.sync.resync-interval-seconds`，默认 5s），窗口期变化最多延迟 5s 生效 |
+| **零窗口重拉**（v1.3.3） | 重拉用 `SwitchRuleCache#replaceAll` **diff 合并**（新规则先 put、仅精准 invalidate 失效项），不 clear —— 周期重拉不再造成提权请求瞬时 miss（并发读 0 miss 有单测锁定） |
 | **推荐升级** | 高可用场景建议改用 Redis Streams（`XADD` + 消费者组）取代 Pub/Sub，天然 ack + 持久化，详见 §3.1.4 |
 
 #### 3.1.4 高可用开关同步（Redis Streams，可选升级）
@@ -178,7 +179,7 @@ Console (POST /api/logs/switch)
 | **每个节点独立消费** | 消费者组 + 每个节点独立 consumer name，避免重复消费 |
 | **自动截断** | `MAXLEN ~ 10000` 控制 stream 长度，避免内存无限增长 |
 
-> 通过 `framework4j.tracelog.switch-transport = pubsub \| streams`（默认 `pubsub`）切换。
+> 通过 `framework4j.tracelog.sync.transport = pubsub \| streams`（默认 `pubsub`）切换。
 
 #### 3.1.5 TraceId 标准化（OTel 32-hex）
 
@@ -219,20 +220,27 @@ Console (POST /api/logs/switch)
 
 #### 3.2.3 容量管控 Lua 脚本（首次写入时执行）
 
+> v1.3.3：SETNX 判定移入脚本内部（KEYS[3]），原子判定 + 仍单次 pipeline 往返。
+
 ```lua
 -- KEYS[1] = 当前 traceId 的 key (trace_log:{traceId})
--- KEYS[2] = 全局队列 key (trace_global_queue)
--- ARGV[1] = 全局最大容量 (来自配置 global-max-traces, 默认 100000)
--- ARGV[2] = 过期秒数   (来自配置 trace-ttl-seconds, 默认 86400)
+-- KEYS[2] = 全局队列 key (trace_global_queue 或分片)
+-- KEYS[3] = 分布式首次标记 key (trace_log:{traceId}:meta)
+-- ARGV[1] = 全局最大容量 (来自配置 storage.global-max-traces, 默认 100000)
+-- ARGV[2] = 过期秒数   (来自配置 storage.trace-ttl-seconds, 默认 86400)
 
 redis.call('EXPIRE', KEYS[1], ARGV[2])
-redis.call('RPUSH', KEYS[2], KEYS[1])
 
-local len = redis.call('LLEN', KEYS[2])
-if len > tonumber(ARGV[1]) then
-    local oldest_key = redis.call('LPOP', KEYS[2])
-    if oldest_key then
-        redis.call('DEL', oldest_key)
+local first = redis.call('SET', KEYS[3], '1', 'EX', tonumber(ARGV[2]), 'NX')
+if first then
+    redis.call('RPUSH', KEYS[2], KEYS[1])
+
+    local len = redis.call('LLEN', KEYS[2])
+    if len > tonumber(ARGV[1]) then
+        local oldest_key = redis.call('LPOP', KEYS[2])
+        if oldest_key then
+            redis.call('DEL', oldest_key)
+        end
     end
 end
 return 1
@@ -240,28 +248,33 @@ return 1
 
 > 关键设计：
 > - `ARGV[1]` 和 `ARGV[2]` 均为启动时从 `framework4j.tracelog.*` 注入，**零硬编码**
-> - `EXPIRE` 先于 `RPUSH`，避免首次写入后未及时设置 TTL 就被裁剪
+> - `EXPIRE` 幂等（每次刷新 TTL），`RPUSH` 仅在 SET NX 成功（全局首次）时执行
 > - 全局队列超过上限时弹出**最老的** traceId 并彻底删除其日志 List，避免 Redis 内存单调增长
 > - `trace_global_queue` 自身不需要 TTL（其长度受 LLEN 限制）
 
 #### 3.2.4 分布式"首次写入"判定（SETNX）
 
-> **问题**：本地 Caffeine `traceIdCache` 仅本节点有效，多节点同时首次写同一 traceId 时 Lua 仍会被重复执行。
+> **问题**：本地 Caffeine `traceIdCache` 仅本节点有效，多节点同时首次写同一 traceId 时，全局队列会被重复 RPUSH。
 >
-> **解决**：用 Redis `SETNX trace_log:{traceId}:meta` 作为**跨节点**的分布式首次标记。
+> **解决**：`SET trace_log:{traceId}:meta 1 EX {ttl} NX` 作为**跨节点**的分布式首次标记。
 
 ```
-本节点 Caffeine 不命中 → SETNX trace_log:{traceId}:meta "1" EX 86400 NX
-   ├─ 成功 → 真首次 → 执行 Lua（RPUSH + EXPIRE + LLEN 裁剪）
-   └─ 失败 → 其他节点已写过 → 跳过 Lua，仅做 RPUSH + LTRIM
+本节点 Caffeine 不命中（firstSeen）→ pipeline 内执行 Lua
+   ├─ 脚本内 SET NX 成功 → 真首次 → RPUSH 全局队列 + 容量裁剪
+   └─ 脚本内 SET NX 失败 → 其他节点已写过 → 跳过入队，仅保留 RPUSH 日志 + LTRIM
 ```
+
+> **为什么 SETNX 必须在 Lua 内部**（v1.3.2 实测 bug → v1.3.3 修复）：
+> 若在 pipeline 里单独发 SETNX 再盲发 Lua，SETNX 的返回值无从消费（pipeline 异步批量返回），
+> Lua 每次仍会 RPUSH —— 多节点场景同一 traceId 重复入队（集成测试
+> `TraceLogStoreIntegrationTest#setnxFirstTime` 锁定该行为：5 次重复 flush 队列长度必须 = 1）。
 
 | 优势 | 说明 |
 |---|---|
-| **节省 Redis CPU** | Lua 仅在真正首次时执行，多节点不会重复 |
-| **无锁竞争** | SETNX 单命令原子，无需事务 / WATCH |
+| **节省 Redis CPU** | 入队 + 裁剪仅在真正首次时执行，多节点不会重复 |
+| **无锁竞争** | SET NX 单命令原子，无需事务 / WATCH |
 | **TTL 自清理** | 标记 key 与 trace 同生命周期，无需单独清理 |
-| **退化路径** | SETNX 失败（如 Redis 短暂不可用）→ 降级用本地 Caffeine 判定，功能不受影响 |
+| **单往返** | 判定与入队在同一脚本内完成，pipeline 不加额外 RTT |
 
 ### 3.3 临时日志开关设计（最长 1 小时自动过期���
 
@@ -1101,11 +1114,11 @@ public class AccessTokenTraceLogAuthValidator implements TraceLogAuthValidator {
 
 | 属性 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `switch-channel` | `String` | `channel:log_switch` | Pub/Sub 频道名 |
-| `switch-transport` | `enum` | `pubsub` | `pubsub`（默认）或 `streams` |
-| `switch-max-ttl-seconds` | `long` | `3600` | 开关最长有效期 |
-| `switch-resync-interval-seconds` | `long` | `5` | Pub/Sub 断连重拉周期（**默认 5s**，可配置） |
-| `switch-rule-cache-size` | `int` | `100000` | 本地 Caffeine 容量 |
+| `sync.channel` | `String` | `channel:log_switch` | Pub/Sub 频道名 |
+| `sync.transport` | `enum` | `pubsub` | `pubsub`（默认）或 `streams` |
+| `sync.max-ttl-seconds` | `long` | `3600` | 开关最长有效期 |
+| `sync.resync-interval-seconds` | `long` | `5` | 重拉周期（**默认 5s**，可配置；diff 合并零窗口） |
+| `sync.rule-cache-size` | `int` | `100000` | 本地 Caffeine 容量 |
 
 ### 4.5 提权（TurboFilter）
 
@@ -1320,28 +1333,34 @@ framework4j-tracelog/
 </dependency>
 ```
 
-### 5.4 Logback 接入（消费方）
+### 5.4 Logback 接入（消费方，v1.3.x 起**零声明**）
+
+> **v1.3.x 重要变更**：TurboFilter 与 AsyncRedisLogAppender 由 `TraceLogBeansConfig` **编程式注册**
+> （TurboFilter 加入 LoggerContext，Appender 自动挂到 root logger）。
+> **不要在 logback-spring.xml 里声明它们** —— 两者依赖 Spring Bean
+> （TraceLogStore / TraceLogProperties），logback 声明式实例化会因没有无参构造抛
+> `NoSuchMethodException` 导致启动失败。
+
+> 同时**不要把业务包 logger 设为 DEBUG** —— TurboFilter 在级别检查**之前**执行，
+> 提权命中返回 ACCEPT 直接放行（绕过级别检查）；若 logger 本身 DEBUG，
+> 未提权的 DEBUG 事件也会全量输出，失去动态提权意义。业务包保持 INFO 即可。
+
+消费方的 `logback-spring.xml` 只需保留常规配置：
 
 ```xml
 <!-- logback-spring.xml -->
 <configuration>
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
 
-    <!-- 引入 framework4j-tracelog 的 TurboFilter（动态提权） -->
-    <turboFilter class="fun.commons.framework4j.tracelog.appender.DynamicLevelTurboFilter"/>
-
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder><pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern></encoder>
-    </appender>
-
-    <!-- 核心: 业务日志同时输出到控制台 + 异步 Redis -->
-    <appender name="ASYNC_REDIS" class="fun.commons.framework4j.tracelog.appender.AsyncRedisLogAppender">
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}] - %msg%n</pattern>
+        </encoder>
     </appender>
 
     <root level="INFO">
         <appender-ref ref="STDOUT"/>
-        <appender-ref ref="ASYNC_REDIS"/>
+        <!-- ASYNC_REDIS 与 DynamicLevelTurboFilter 由 TraceLogBeansConfig 自动注册, 此处无需声明 -->
     </root>
 </configuration>
 ```
@@ -1356,7 +1375,7 @@ framework4j-tracelog/
 | **控制台被滥用** | 强制鉴权（`api.require-auth=true`，未配置 `TraceLogAuthValidator` 启动 fail-fast）+ IP 白/黑名单 + 1h TTL + 审计 + 维度频控 |
 | **敏感日志泄漏** | v1.0 框架仅采集 + 暴露 `LogMaskingConverter` 扩展点；**强烈建议接入 `framework4j-sensitive`** v1.1 联动；控制台 HTML 输出做 HTML 转义防 XSS |
 | **Redis 单点** | 建议消费方用 Redis Cluster / 主从 + 哨兵；Cluster 下启用 `global-queue-shards` 分片避免 `trace_global_queue` 热点 |
-| **网络分区下开关不同步** | 本地兜底（启动 SCAN+MGET）+ **`switch-resync-interval-seconds`**（默认 5s，可配置）周期重拉；高可用场景建议升级到 Streams（§3.1.4） |
+| **网络分区下开关不同步** | 本地兜底（启动 SCAN）+ **`sync.resync-interval-seconds`**（默认 5s，可配置）周期重拉（diff 合并零窗口）；高可用场景建议升级到 Streams（§3.1.4） |
 | **跨租户泄漏** | `tenant.enabled=true` + `tenant.key-spel` → Redis Key 加 `tenantKey:` 前缀；查询接口强校验租户 |
 | **业务日志炸弹** | per-trace 速率限制（默认 200 条/秒）+ Java 令牌桶（防 Redis Lua 失效时被业务拖垮） |
 | **容器化降级丢失** | **必须挂载 hostPath / PVC 到 `${fallback-dir}`**；容器本地文件系统在 Pod 驱逐时丢失 |
@@ -1572,7 +1591,7 @@ framework4j-tracelog/
 
 ---
 
-**文档版本**：v1.2
+**文档版本**：v1.3.3
 **维护者**：framework4j-tracelog 模块作者
 **反馈**：通过 `framework4j` 主仓库 Issue 提交
 
@@ -1583,6 +1602,8 @@ framework4j-tracelog/
 | v1.0 | 2026-08-24 | 初稿 |
 | v1.1 | 2026-08-24 | 整合评审反馈：Pub/Sub 默认 5s 可配置；容量参数全部可配置；单线程改分片 Disruptor；SETNX 分布式首次判定；轻量级 append；per-trace 限速；graceful shutdown；敏感字段脱敏扩展点；API 鉴权 fail-fast；多租户隔离；日志导出接口；纯 HTML 单文件控制台（移除 Vue 3 计划）；新增 JSON Schema / 已知限制 / 测试矩阵 / 责任边界章节 |
 | v1.2 | 2026-08-25 | **代码已落地**：实现 TenantKeyResolver（多租户 SpEL）/ FallbackReplayer（异步回灌）/ SwitchStreamsListener（Redis Streams 替代）/ TraceLogMetrics（Micrometer 6 类指标）/ SwitchRuleCache.valuesOf()（URL pattern Ant 匹配）；LocalFallbackWriter 启动硬失败；framework4j-web 升级为强依赖；删除冗余 GracefulShutdownHook（Disruptor 自带）；删除冗余 lifecycle 包；目录结构更新；已 `mvn install` 到本地 Maven |
+| v1.3.0–v1.3.2 | 2026-08-25 | 接入实战修复（下游反馈）：**编程式注册** TurboFilter/Appender（logback-spring.xml 声明会因无无参构造启动失败，§5.4 重写为"零声明"）；`buildLogKey` 归一化 traceId（带横线 UUID 查询不命中）；`SwitchRule` type 小写归一化（写/读/匹配侧 key 一致）；`StringRedisTemplate` Bean 改名 `traceLogStringRedisTemplate`（避免与 Spring Boot 同名 Bean 冲突）；Interceptor 改拦 `/**` 并排除 tracelog 自身路径；resync SpEL 属性路径修正 `sync.*` |
+| v1.3.3 | 2026-08-26 | **端到端冒烟通过**（§十三）+ 3 个运行链路修复：① SETNX 判定移入 Lua 内部（pipeline 盲发导致多节点重复入队，集成测试锁定）；② `SwitchRuleCache#replaceAll` diff 合并零窗口重拉（原 clear+重放每 5s 瞬时空窗，并发读 0 miss 单测锁定）；③ 查询/导出双字段名兼容 LogstashEncoder 默认名（`logger_name`/`thread_name`/`@timestamp`，控制台字段不再空白）；控制台 `/tracelog.html` view-controller 转发；集成测试回退本机 Redis（db 15 隔离 + flushDb） |
 
 ### 实现状态
 
@@ -1596,6 +1617,26 @@ framework4j-tracelog/
 | 阶段 5 | Logback TurboFilter 提权 | ✅ |
 | 阶段 6 | API 层（查询 / 开关 / 导出） | ✅ |
 | 阶段 7 | 纯 HTML 单文件控制台 | ✅ |
-| 阶段 8 | 单元测试（34 通过 / 0 失败） | ✅ |
-| 阶段 9 | 集成测试（5 跳过：嵌入式 Redis 0.7.3 在部分 Mac 启动失败） | ⚠️ |
+| 阶段 8 | 单元测试（40 通过 / 0 失败） | ✅ |
+| 阶段 9 | 集成测试（5 通过；嵌入式失败自动回退本机 Redis db15） | ✅ |
 | 阶段 10 | README + 父 POM 注册 + install | ✅ |
+| 冒烟 | demo 端到端 7 项验证（§十三） | ✅ |
+
+---
+
+## 十三、运行链路验证（2026-08-26 实测）
+
+> 环境：`framework4j-demo` + docker `redis:7.2`（localhost:6379），全链路手工冒烟。
+
+| # | 验证项 | 结果 |
+|---|---|---|
+| 1 | 应用启动，TraceLog 全链路装配（FallbackWriter → Store → Replayer → Appender×2 workers → PubSub → TurboFilter → Resync） | ✅ |
+| 2 | 业务请求日志按 traceId 聚合到 Redis（`trace_log:{32-hex}` List + `:meta` 标记 + 全局队列入队） | ✅ |
+| 3 | 查询 API：**带横线 UUID** 也能命中（`buildLogKey` 归一化）；ts/level/logger/thread/tsIso 字段完整（LogstashEncoder 双字段名兼容） | ✅ |
+| 4 | **开关提权**：`POST /api/logs/switch`（user:10086 DEBUG）→ 带 `X-User-Id: 10086` 的请求采集到 5 条（含 DEBUG×2 + TRACE×1）；无开关对照仅 INFO×2 | ✅ |
+| 5 | 控制台 `GET /tracelog.html` → 200（view-controller 转发到 `classpath:/static/tracelog/index.html`，10.8KB） | ✅ |
+| 6 | txt 导出（gzip）：378B，5 条含 DEBUG/TRACE，字段完整 | ✅ |
+| 7 | 应用重启后���关仍生效（Redis 持久，重拉加载），提权请求仍采到 5 条 | ✅ |
+
+测试汇总（v1.3.3）：**45 通过 / 0 失败 / 0 跳过**
+（单元 40 + 集成 5；集成测试优先嵌入式 Redis（16380），失败自动回退本机 Redis **db 15**（`flushDb` 只清测试库，绝不触碰业务库 0））

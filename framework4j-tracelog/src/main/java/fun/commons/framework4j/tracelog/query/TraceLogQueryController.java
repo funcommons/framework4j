@@ -190,25 +190,49 @@ public class TraceLogQueryController {
     }
 
     private LogDto parseLine(String json) {
-        // 简化：直接解析关键字段，控制台前端也按此 JSON schema
+        // 直接解析关键字段，控制台前端也按此 JSON schema。
+        // 双字段名兼容：文档 schema（logger/thread/tsIso）+ LogstashEncoder 默认（logger_name/thread_name/@timestamp）
         try {
             LogDto dto = new LogDto();
             dto.setTs(extractLong(json, "ts"));
-            dto.setTsIso(extractString(json, "tsIso"));
+            String tsIso = firstNonNull(
+                    extractString(json, "tsIso"),
+                    extractString(json, "@timestamp"));
+            dto.setTsIso(tsIso);
+            // ts 缺失时从 ISO 时间戳补齐（毫秒）
+            if (dto.getTs() == 0L && tsIso != null) {
+                dto.setTs(parseIsoToMillis(tsIso));
+            }
             dto.setLevel(extractString(json, "level"));
-            dto.setLogger(extractString(json, "logger"));
-            dto.setThread(extractString(json, "thread"));
+            dto.setLogger(firstNonNull(extractString(json, "logger"),
+                    extractString(json, "logger_name")));
+            dto.setThread(firstNonNull(extractString(json, "thread"),
+                    extractString(json, "thread_name")));
             dto.setTraceId(extractString(json, "traceId"));
             dto.setSpanId(extractString(json, "spanId"));
             dto.setMessage(extractString(json, "message"));
-            dto.setApp(extractString(json, "app"));
+            dto.setApp(firstNonNull(extractString(json, "app"),
+                    extractString(json, "app_name")));
             dto.setHost(extractString(json, "host"));
+            dto.setHost(firstNonNull(dto.getHost(), extractString(json, "host_name")));
             return dto;
         } catch (Exception e) {
             LogDto dto = new LogDto();
             dto.setMessage(json);
             dto.setLevel("INFO");
             return dto;
+        }
+    }
+
+    private static String firstNonNull(String a, String b) {
+        return a != null ? a : b;
+    }
+
+    private static long parseIsoToMillis(String iso) {
+        try {
+            return java.time.Instant.parse(iso).toEpochMilli();
+        } catch (Exception e) {
+            return 0L;
         }
     }
 

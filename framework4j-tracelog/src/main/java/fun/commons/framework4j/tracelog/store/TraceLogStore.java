@@ -82,25 +82,20 @@ public class TraceLogStore {
                 // 2. LTRIM 限制单 trace 最大条数
                 connection.listCommands().lTrim(logKey, -singleMax, -1);
 
-                // 3. SETNX 分布式首次标记
+                // 3. 首次写入：Lua 内部原子完成 SETNX 判定 + 入队 + 容量裁剪
+                //    （SETNX 在脚本内才能消费返回值；pipeline 盲发 SETNX + Lua 会导致重复入队）
                 if (item.firstSeen()) {
                     byte[] metaKey = (fullKeyPrefix + ":" + item.traceId() + TraceLogLua.FIRST_TIME_MARKER_KEY_SUFFIX)
                             .getBytes(StandardCharsets.UTF_8);
-                    connection.stringCommands().set(
-                            metaKey,
-                            "1".getBytes(StandardCharsets.UTF_8),
-                            org.springframework.data.redis.core.types.Expiration.seconds(traceTtl),
-                            org.springframework.data.redis.connection.RedisStringCommands.SetOption.SET_IF_ABSENT);
-
-                    // 4. Lua: EXPIRE trace_log + RPUSH 到全局队列 + 容量裁剪
                     byte[] globalQueueKey = globalQueueKey(item.traceId(), globalShards, tenantPrefix)
                             .getBytes(StandardCharsets.UTF_8);
                     connection.scriptingCommands().eval(
                             TraceLogLua.CAPACITY_SCRIPT.getBytes(StandardCharsets.UTF_8),
                             ReturnType.INTEGER,
-                            2,
+                            3,
                             logKey,
                             globalQueueKey,
+                            metaKey,
                             String.valueOf(globalMax).getBytes(StandardCharsets.UTF_8),
                             String.valueOf(traceTtl).getBytes(StandardCharsets.UTF_8));
                 }
