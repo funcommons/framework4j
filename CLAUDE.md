@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.4.1`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.4.2`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `framework4j-cache` | Multi-level cache (Caffeine L1 + Redis L2 + single-flight stampede protection) | `framework4j.cache.*` |
 | `framework4j-audit` | Audit log (`@Auditable` AOP + hash-chain tamper protection) | `framework4j.audit.*` |
 | `framework4j-sensitive` | Field masking (Jackson) + AES-256-GCM encryption (MyBatis TypeHandler) | `framework4j.sensitive.*` |
-| `framework4j-transport` | HTTP transport abstraction (RestTemplate / WebClient switch), shared by other modules | `framework4j.transport.*` |
+| `framework4j-transport` | HTTP transport abstraction (RestTemplate / WebClient switch), shared by other modules. Since v1.4.2 (Issue #18) `framework4jHttpTransport` resolves its RestTemplate via `ObjectProvider` + optional `rest-template-bean-name` pin — ≥2 business RestTemplates no longer crash startup (falls back to built-in default + WARN); 0/1-bean reuse semantics unchanged | `framework4j.transport.*` |
 | `framework4j-tracelog` | Runtime trace logging (logback appender + sampling/rate-limiting + query API + sensitive-field masking; added v1.3.0) | `framework4j.tracelog.*` |
 | `framework4j-all` | Convenience aggregator pulling all 16 starters (api, web, datetime, id, sql-tracing, redis, datasource, accesstoken, idempotency, signature, rate-limit, cache, audit, sensitive, transport, tracelog) | — |
 

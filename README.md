@@ -24,7 +24,7 @@
 | `framework4j-cache` | 多级缓存（Caffeine L1 + Redis L2 + 单飞防击穿） | `framework4j.cache.*` |
 | `framework4j-audit` | 审计日志（`@Auditable` AOP + Hash Chain 防篡改） | `framework4j.audit.*` |
 | `framework4j-sensitive` | 字段脱敏（Jackson）+ AES-256-GCM 加密（MyBatis TypeHandler） | `framework4j.sensitive.*` |
-| `framework4j-transport` | HTTP 传输抽象（RestTemplate / WebClient 切换） | `framework4j.transport.*` |
+| `framework4j-transport` | HTTP 传输抽象（RestTemplate / WebClient 切换 + 内置重试） | `framework4j.transport.*` |
 | `framework4j-tracelog` | 运行链路日志（logback appender + 采样限速 + 查询 API + 敏感字段脱敏） | `framework4j.tracelog.*` |
 | `framework4j-all` | 聚合所有模块（一行依赖全栈集成） | - |
 
@@ -45,7 +45,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.4.1</version>
+    <version>v1.4.2</version>
 </dependency>
 ```
 
@@ -61,7 +61,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.4.1</version>
+    <version>1.4.2</version>
 </dependency>
 ```
 
@@ -144,6 +144,7 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
+| **v1.4.2** | **framework4j-transport 修复 GitHub Issue #18**：`framework4jHttpTransport(RestTemplate)` 形参按类型注入，业务方声明 ≥2 个 `RestTemplate` Bean 时 `NoUniqueBeanDefinitionException` 启动失败（即使未使用 HttpTransport 也触发，模块自 1.2.9 引入即有此缺陷）。修复：形参改 `ObjectProvider`——新增 `framework4j.transport.rest-template-bean-name` 显式指定复用的 Bean（按名取用，配错启动报错）；未配置时唯一候选自动复用（业务 0 个→框架兜底 / 1 个→复用业务实例 / 多个但标 `@Primary`→复用主 Bean），歧义时**降级内置默认实例 + WARN 列出候选 Bean 名**，不再崩溃。注：issue 中建议的 `@Qualifier("framework4jRestTemplate")` 方案本身不成立——业务方声明 ≥1 个 RestTemplate 时该 Bean 因 `@ConditionalOnMissingBean` 让位不存在，按名注入必失败。存量 0/1 个 RestTemplate 场景行为逐一不变。模块首套测试（6 用例，ApplicationContextRunner） |
 | **v1.4.1** | **framework4j-accesstoken 角色鉴权（GitHub Issue #16 方案 A）+ path-patterns 语义修正（Issue #17）**。`@RequiresToken` 新增 `roles()`（全匹配 AND）/ `anyRole()`（任一匹配 OR）声明式角色校验：角色从 **Redis claims** 的 `roles` 键读取（非 JWT payload），新增 `AccessTokenGenerator#updateClaims(tokenType, uid, claims)` 让角色变更（升权/降权）**全端实时生效**——无需重签 token / 重登（TTL 以 SET KEEPTTL 原样保留）；校验失败返回 `10300 FORBIDDEN`（与 10200 未认证区分）；fail-closed：存量老 token 无 `roles` claim 时新加角色校验的端点返回 403，重登或 `updateClaims` 后恢复；`type=refresh` 端点不做角色校验；两属性空默认值，存量注解零影响。**行为变更**：`path-patterns` 显式空列表从"拦截 `/**`"（Spring `addPathPatterns(空)` 语义，反直觉）改为**跳过拦截器注册 + WARN**；默认 `/**` 与非空列表不变，关闭模块请用 `enabled: false`。新增 13 个测试（角色校验 / updateClaims 实时生效与 TTL 保留 / 空列表注册锁定），模块 97 tests 全绿 |
 | **v1.3.0 – v1.4.0** | 新增 `framework4j-tracelog` 模块（运行链路日志：logback appender + 采样限速 + 查询 API；v1.4.0 补敏感字段脱敏 + 4 个运行链路集成测试；v1.3.1–v1.3.3 修复接入阻断与运行链路 bug、web 模块 MDC traceId 兜底过滤器，详见 git log） |
 | **v1.2.8** | **framework4j-accesstoken 严重修复**（下游 benefit4j "claims → TokenContext 链路问题"报告，实为误诊）：`AccessTokenAutoConfiguration` 补 `@Import(AccessTokenWebMvcConfig)` —— 与 idempotency v1.2.5 同构的孤儿注册类问题：`TokenInterceptor` Bean 创建了但永不进 MVC 链，`@RequiresToken` 不生效、`TokenContext` 永不填充（所有 `getClaim` 返回 null，不止 app_id）。claims → Redis → TokenContext 链路本身无故障（`WebIntegrationTest` 早已证明，只是测试自建了注册）。附带修复续期潜伏 bug：`renewIncrement != null` 恒真（`asLong` 缺省返装箱 0），`autoRenew` 未配 `renew-increment` 的策略每次校验 `expire(key, 0)` **删除 token 元数据**（第二次请求必 10201），改为 `> 0` 判定。新增注册锁定测试；模块 84 tests 全绿。⚠️ 下游注意：升级后 `@RequiresToken` 开始真正生效（此前鉴权形同虚设）；自建拦截器注册请拆除 |

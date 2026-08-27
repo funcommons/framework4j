@@ -26,6 +26,11 @@ public class RestTemplateHttpTransport implements HttpTransport {
     private final int maxAttempts;
     private final long retryIntervalMs;
 
+    /** v1.4.2：暴露底层 RestTemplate（测试断言复用语义 / 业务方诊断用） */
+    public RestTemplate getRestTemplate() {
+        return restTemplate;
+    }
+
     public RestTemplateHttpTransport(RestTemplate restTemplate) {
         this(restTemplate, 3, 500);
     }
