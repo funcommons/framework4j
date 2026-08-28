@@ -91,6 +91,11 @@ class TenantAuthTemplateTest {
                         .filter(t -> "ACTIVE".equals(t.getStatus()) && t.getName().equals(name))
                         .findFirst().orElse(null);
             }
+
+            @Override
+            public void update(TenantEntity tenant) {
+                tenants.put(tenant.getId(), tenant);
+            }
         };
         template = new TenantAuthTemplate(props, store, redis, generator, APP_NAME);
         tenants.keySet().forEach(id -> redis.delete(failKey(id)));

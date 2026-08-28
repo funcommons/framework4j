@@ -31,6 +31,12 @@ public class MyBatisTenantStore implements TenantStore {
         return selectOne(qw);
     }
 
+    @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public void update(TenantEntity tenant) {
+        ((BaseMapper) mapper).updateById(tenant);
+    }
+
     /** 泛型桥接:BaseMapper&lt;capture&gt; 接受基类 Wrapper(raw 调用,契约列已由基类冻结) */
     @SuppressWarnings({"rawtypes", "unchecked"})
     private TenantEntity selectOne(QueryWrapper<TenantEntity> qw) {

@@ -19,4 +19,10 @@ public interface TenantStore {
      * 按 name 查 ACTIVE 租户(client_id 兼容 name 形态);不存在返回 null。
      */
     TenantEntity findActiveByName(String name);
+
+    /**
+     * 全量更新实体(updateById 语义:TypeHandler 加密/JSONB 序列化在 update 时生效)。
+     * 用于密钥 reset、状态机流转等低频写。
+     */
+    void update(TenantEntity tenant);
 }

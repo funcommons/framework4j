@@ -5,6 +5,10 @@ import fun.commons.framework4j.accesstoken.config.AccessTokenProperties;
 import fun.commons.framework4j.accesstoken.core.AccessTokenGenerator;
 import fun.commons.framework4j.tenant.auth.TenantAuthEndpoint;
 import fun.commons.framework4j.tenant.auth.TenantAuthTemplate;
+import fun.commons.framework4j.tenant.auth.TenantSecretService;
+import fun.commons.framework4j.tenant.auth.TenantSessionRevoker;
+import fun.commons.framework4j.tenant.auth.RegistrationKeyService;
+import fun.commons.framework4j.tenant.auth.RegistrationKeyEndpoint;
 import fun.commons.framework4j.tenant.ddl.TenantDdlInitializer;
 import fun.commons.framework4j.tenant.entity.TenantEntity;
 import fun.commons.framework4j.tenant.store.MyBatisTenantStore;
@@ -146,6 +150,83 @@ public class TenantAutoConfiguration {
             fillTokenTypePolicy(properties, atProps);
         }
         return new TenantAuthEndpoint(template);
+    }
+
+    /**
+     * 会话撤销器(密钥 reset 后撤销该租户全部存量会话,§5.5)。
+     * 型别 = auth.token-type + 兼容存量 APP/OPS。
+     * hashSalt 从 AccessTokenProperties 直取(accesstoken 模块的配置)。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantSessionRevoker tenantSessionRevoker(Framework4jTenantProperties properties,
+                                                     ObjectProvider<StringRedisTemplate> redis,
+                                                     ObjectProvider<AccessTokenGenerator> tokenGenerator,
+                                                     ObjectProvider<AccessTokenProperties> accessTokenProperties,
+                                                     org.springframework.beans.factory.BeanFactory beanFactory,
+                                                     @Value("${spring.application.name:}") String appName) {
+        AccessTokenGenerator generator = tokenGenerator.getIfAvailable();
+        AccessTokenProperties atProps = accessTokenProperties.getIfAvailable();
+        if (generator == null || atProps == null) {
+            return null;
+        }
+        List<String> types = new java.util.ArrayList<>(
+                List.of(properties.getAuth().getTokenType(), "APP", "OPS"));
+        return new TenantSessionRevoker(resolveRedis(redis, beanFactory), appName, atProps, types);
+    }
+
+    /**
+     * 密钥生命周期服务(reset:双版本过渡 + 明文只显一次)。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantSecretService tenantSecretService(ObjectProvider<TenantStore> tenantStore,
+                                                   ObjectProvider<TenantSessionRevoker> revoker) {
+        TenantStore store = tenantStore.getIfAvailable();
+        TenantSessionRevoker r = revoker.getIfAvailable();
+        return store == null || r == null ? null : new TenantSecretService(store, r);
+    }
+
+    /**
+     * 注册码服务(通道 B,registration-key.enabled 才注册)。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnProperty(prefix = "framework4j.tenant.registration-key", name = "enabled", havingValue = "true")
+    public RegistrationKeyService registrationKeyService(Framework4jTenantProperties properties,
+                                                         ObjectProvider<TenantStore> tenantStore,
+                                                         ObjectProvider<StringRedisTemplate> redis,
+                                                         org.springframework.beans.factory.BeanFactory beanFactory,
+                                                         @Value("${spring.application.name:}") String appName) {
+        TenantStore store = tenantStore.getIfAvailable();
+        return store == null ? null : new RegistrationKeyService(properties, store,
+                resolveRedis(redis, beanFactory), appName);
+    }
+
+    /**
+     * 注册码开放域端点(注册码通道开启 + Servlet 环境)。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnProperty(prefix = "framework4j.tenant.registration-key", name = "enabled", havingValue = "true")
+    public RegistrationKeyEndpoint registrationKeyEndpoint(RegistrationKeyService service,
+                                                           ObjectProvider<AccessTokenProperties> accessTokenProperties) {
+        AccessTokenProperties atProps = accessTokenProperties.getIfAvailable();
+        if (atProps != null) {
+            String openPath = "/open/api/v1/tenants/register";
+            List<String> excludes = atProps.getExcludePathPatterns();
+            if (excludes == null) {
+                excludes = new java.util.ArrayList<>();
+            }
+            if (!excludes.contains(openPath)) {
+                List<String> next = new java.util.ArrayList<>(excludes);
+                next.add(openPath);
+                atProps.setExcludePathPatterns(next);
+                log.info("【Tenant】注册码端点 {} 已代填进 access-token exclude-path(免 token 拦截)", openPath);
+            }
+        }
+        return new RegistrationKeyEndpoint(service);
     }
 
     private void fillExcludePath(Framework4jTenantProperties properties, AccessTokenProperties atProps) {
