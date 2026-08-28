@@ -1,1 +1,2 @@
 fun.commons.framework4j.tenant.config.TenantAutoConfiguration
+fun.commons.framework4j.tenant.config.TenantWebMvcConfig
