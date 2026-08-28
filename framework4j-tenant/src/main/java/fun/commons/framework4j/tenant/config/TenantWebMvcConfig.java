@@ -1,5 +1,6 @@
 package fun.commons.framework4j.tenant.config;
 
+import fun.commons.framework4j.tenant.context.UserIdContext;
 import fun.commons.framework4j.tenant.interceptor.DomainGuardInterceptor;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -31,8 +32,16 @@ public class TenantWebMvcConfig implements WebMvcConfigurer {
         return new DomainGuardInterceptor();
     }
 
+    @Bean
+    public UserIdContext.UserIdContextInterceptor userIdContextInterceptor() {
+        return new UserIdContext.UserIdContextInterceptor();
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(userIdContextInterceptor())
+                .addPathPatterns("/**")
+                .order(Ordered.LOWEST_PRECEDENCE - 1);   // 先填 X-User-Id,再守卫
         registry.addInterceptor(domainGuardInterceptor())
                 .addPathPatterns("/**")
                 .order(Ordered.LOWEST_PRECEDENCE);

@@ -11,6 +11,7 @@ import fun.commons.framework4j.tenant.auth.RegistrationKeyService;
 import fun.commons.framework4j.tenant.auth.RegistrationKeyEndpoint;
 import fun.commons.framework4j.tenant.ddl.TenantDdlInitializer;
 import fun.commons.framework4j.tenant.entity.TenantEntity;
+import fun.commons.framework4j.tenant.rls.RlsAssistant;
 import fun.commons.framework4j.tenant.store.MyBatisTenantStore;
 import fun.commons.framework4j.tenant.store.TenantStore;
 import fun.commons.framework4j.tenant.schema.TenantSchema;
@@ -227,6 +228,18 @@ public class TenantAutoConfiguration {
             }
         }
         return new RegistrationKeyEndpoint(service);
+    }
+
+    /**
+     * RLS 助手:POLICY 就位不 FORCE / FULL 连接层强制。业务表清单由项目配置(rls.tables)。
+     * 无 DataSource 时返回 null。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public RlsAssistant rlsAssistant(Framework4jTenantProperties properties,
+                                     ObjectProvider<DataSource> dataSource) {
+        DataSource ds = dataSource.getIfAvailable();
+        return ds == null ? null : new RlsAssistant(properties, ds);
     }
 
     private void fillExcludePath(Framework4jTenantProperties properties, AccessTokenProperties atProps) {
