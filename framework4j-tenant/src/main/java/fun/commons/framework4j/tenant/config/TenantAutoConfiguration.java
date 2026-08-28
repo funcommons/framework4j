@@ -1,22 +1,35 @@
 package fun.commons.framework4j.tenant.config;
 
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import fun.commons.framework4j.accesstoken.config.AccessTokenProperties;
+import fun.commons.framework4j.accesstoken.core.AccessTokenGenerator;
+import fun.commons.framework4j.tenant.auth.TenantAuthEndpoint;
+import fun.commons.framework4j.tenant.auth.TenantAuthTemplate;
 import fun.commons.framework4j.tenant.ddl.TenantDdlInitializer;
+import fun.commons.framework4j.tenant.entity.TenantEntity;
+import fun.commons.framework4j.tenant.store.MyBatisTenantStore;
+import fun.commons.framework4j.tenant.store.TenantStore;
 import fun.commons.framework4j.tenant.schema.TenantSchema;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 import javax.sql.DataSource;
+import java.util.List;
 
 /**
- * framework4j-tenant 自动配置(Step 1 骨架)。
+ * framework4j-tenant 自动配置。
  * <p>
  * 实施计划(framework4j-tenant模块设计 v1.1 §7,共 7 步):
- * Step1 骨架(本类)→ Step2 租户表/实体 SPI → Step3 双面守卫注解 → Step4 认证端点
+ * Step1 骨架 ✅ → Step2 实体 SPI/DDL ✅ → Step3 双面守卫 ✅ → Step4 认证端点(本步)
  * → Step5 密钥/注册码 → Step6 UserIdContext/RLS → Step7 tenant-tck。
  * <p>
  * 与多数模块不同:本模块默认关闭({@code framework4j.tenant.enabled=false}),
@@ -49,4 +62,122 @@ public class TenantAutoConfiguration {
                                                      ObjectProvider<DataSource> dataSource) {
         return new TenantDdlInitializer(properties, schema.getIfAvailable(), dataSource.getIfAvailable());
     }
+
+    /**
+     * 租户存取:复用项目注册的 BaseMapper 子接口(实体子类 SPI 的第二个文件)。
+     * 泛型解析注入 —— {@code interface BenefitTenantMapper extends BaseMapper<BenefitTenant>}。
+     * 未注册 Mapper 时返回 null(不注册 bean)—— 认证栈(TenantAuthTemplate)随之静默不装,
+     * 缺失接入清单见模块 README;tenant-tck 断言兜底。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(BaseMapper.class)
+    public TenantStore tenantStore(ObjectProvider<BaseMapper<? extends TenantEntity>> tenantMappers) {
+        BaseMapper<? extends TenantEntity> mapper = tenantMappers.getIfAvailable();
+        return mapper == null ? null : new MyBatisTenantStore(mapper);
+    }
+
+    /**
+     * 认证模板:平台合成租户/防爆破/宽限期双版本全套;项目自带端点时直接注入本模板。
+     * 前置(TenantStore + AccessTokenGenerator)未就绪时返回 null —— 只用 DDL/守卫的项目不受影响。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(AccessTokenGenerator.class)
+    public TenantAuthTemplate tenantAuthTemplate(Framework4jTenantProperties properties,
+                                                 ObjectProvider<TenantStore> tenantStore,
+                                                 ObjectProvider<StringRedisTemplate> redis,
+                                                 ObjectProvider<AccessTokenGenerator> tokenGenerator,
+                                                 org.springframework.beans.factory.BeanFactory beanFactory,
+                                                 @Value("${spring.application.name:}") String appName) {
+        TenantStore store = tenantStore.getIfAvailable();
+        AccessTokenGenerator generator = tokenGenerator.getIfAvailable();
+        if (store == null || generator == null) {
+            return null;
+        }
+        return new TenantAuthTemplate(properties, store, resolveRedis(redis, beanFactory), generator, appName);
+    }
+
+    /**
+     * Redis 模板解析:项目里常有两个 StringRedisTemplate(spring-boot 默认 + accesstoken 私有),
+     * 多候选时按名取 —— 与 accesstoken 同源优先(同一数据源,防爆破 key 与会话 key 同库)。
+     */
+    static StringRedisTemplate resolveRedis(ObjectProvider<StringRedisTemplate> provider,
+                                            org.springframework.beans.factory.BeanFactory beanFactory) {
+        try {
+            StringRedisTemplate template = provider.getIfAvailable();
+            if (template != null) {
+                return template;
+            }
+        } catch (org.springframework.beans.factory.NoUniqueBeanDefinitionException e) {
+            for (String name : new String[]{"accessTokenStringRedisTemplate", "stringRedisTemplate"}) {
+                if (beanFactory.containsBean(name)) {
+                    return beanFactory.getBean(name, StringRedisTemplate.class);
+                }
+            }
+            throw e;
+        }
+        throw new IllegalStateException("TenantAuthTemplate 需要 StringRedisTemplate(防爆破计数/会话 key)");
+    }
+
+    /**
+     * 内置认证端点(auth.enabled 可关)。注册时代填两处,消费方零配置:
+     * <ol>
+     *   <li>auth.path → accesstoken 的 exclude-path(免 token 拦截;MVC 注册远晚于本 bean 实例化,代填必达)</li>
+     *   <li>token-type 对应 policy(key=[tenant_id], expire=auth.expire-seconds) —— 不覆盖项目显式配置</li>
+     * </ol>
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    @ConditionalOnClass(AccessTokenGenerator.class)
+    @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+    @ConditionalOnProperty(prefix = "framework4j.tenant.auth", name = "enabled",
+            havingValue = "true", matchIfMissing = true)
+    public TenantAuthEndpoint tenantAuthEndpoint(Framework4jTenantProperties properties,
+                                                 ObjectProvider<TenantAuthTemplate> authTemplate,
+                                                 ObjectProvider<AccessTokenProperties> accessTokenProperties) {
+        TenantAuthTemplate template = authTemplate.getIfAvailable();
+        if (template == null) {
+            return null;   // 认证栈未就绪(缺 Mapper / accesstoken 模块),端点不注册
+        }
+        AccessTokenProperties atProps = accessTokenProperties.getIfAvailable();
+        if (atProps != null) {
+            fillExcludePath(properties, atProps);
+            fillTokenTypePolicy(properties, atProps);
+        }
+        return new TenantAuthEndpoint(template);
+    }
+
+    private void fillExcludePath(Framework4jTenantProperties properties, AccessTokenProperties atProps) {
+        String authPath = properties.getAuth().getPath();
+        List<String> excludes = atProps.getExcludePathPatterns();
+        if (excludes == null) {
+            excludes = new java.util.ArrayList<>();
+        }
+        if (!excludes.contains(authPath)) {
+            List<String> next = new java.util.ArrayList<>(excludes);
+            next.add(authPath);
+            atProps.setExcludePathPatterns(next);   // List.of() 不可变,不可原地 add
+            log.info("【Tenant】认证端点 {} 已代填进 access-token exclude-path(免 token 拦截)", authPath);
+        }
+    }
+
+    private void fillTokenTypePolicy(Framework4jTenantProperties properties, AccessTokenProperties atProps) {
+        String tokenType = properties.getAuth().getTokenType();
+        if (atProps.getPolicies() == null) {
+            atProps.setPolicies(new java.util.LinkedHashMap<>());
+        }
+        if (atProps.getPolicies().containsKey(tokenType)) {
+            return;   // 项目显式配置优先,不覆盖
+        }
+        AccessTokenProperties.Policy policy = new AccessTokenProperties.Policy();
+        policy.setKey(List.of(TENANT_ID_CLAIM));
+        policy.setExpireTime(properties.getAuth().getExpireSeconds());
+        policy.setMaxUsage(-1);
+        atProps.getPolicies().put(tokenType, policy);
+        log.info("【Tenant】token 型别 {} 无显式 policy,已代填(key=[{}], expire={}s, maxUsage=-1)",
+                tokenType, TENANT_ID_CLAIM, properties.getAuth().getExpireSeconds());
+    }
+
+    static final String TENANT_ID_CLAIM = "tenant_id";
 }
