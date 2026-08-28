@@ -1,9 +1,16 @@
 package fun.commons.framework4j.tenant.config;
 
+import fun.commons.framework4j.tenant.ddl.TenantDdlInitializer;
+import fun.commons.framework4j.tenant.schema.TenantSchema;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+
+import javax.sql.DataSource;
 
 /**
  * framework4j-tenant 自动配置(Step 1 骨架)。
@@ -29,5 +36,17 @@ public class TenantAutoConfiguration {
                 properties.getAuth().getExpireSeconds(),
                 properties.getRegistrationKey().isEnabled() ? "开" : "关",
                 properties.getRls().getMode());
+    }
+
+    /**
+     * DDL 初始化器:SPI 一致性校验(fail-fast)+ AUTO 幂等建表/补列 或 PROVIDED 模板输出。
+     * DataSource 用 ObjectProvider 软依赖 —— 无库项目(纯 PROVIDED)跳过不炸。
+     */
+    @Bean
+    @ConditionalOnMissingBean
+    public TenantDdlInitializer tenantDdlInitializer(Framework4jTenantProperties properties,
+                                                     ObjectProvider<TenantSchema> schema,
+                                                     ObjectProvider<DataSource> dataSource) {
+        return new TenantDdlInitializer(properties, schema.getIfAvailable(), dataSource.getIfAvailable());
     }
 }
