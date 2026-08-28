@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>fun.commons</groupId>
+        <artifactId>framework4j</artifactId>
+        <version>1.4.2</version>
+    </parent>
+
+    <artifactId>framework4j-tenant-tck</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Commons Tenant TCK</name>
+    <description>租户合规测试集 —— 中间件中台租户设计 §10 的机器可执行版(独立 test-jar,任何项目引依赖跑绿即合规)</description>
+
+    <dependencies>
+        <!-- 被测模块(编译期) -->
+        <dependency>
+            <groupId>fun.commons</groupId>
+            <artifactId>framework4j-tenant</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- TCK 基类自身:JUnit/AssertJ/Spring-Test 须在 compile scope(项目 test 继承本类) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <!-- AssertJ:parent 管理为 test scope,TCK 主类须 compile(项目 test 继承本类) -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
+</project>

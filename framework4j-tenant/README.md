@@ -13,12 +13,12 @@
 | 步 | 内容 | 状态 |
 |---|---|---|
 | 1 | 模块骨架(pom/自动配置/Properties)+ 依赖版本对齐 | ✅ |
-| 2 | 租户表实体 SPI + DDL 初始化器 | |
-| 3 | @PlatformDomain/@TenantDomain 双面守卫 | |
-| 4 | TenantAuthTemplate + 内置认证端点 | |
-| 5 | SecretService + RegistrationKeyService | |
-| 6 | UserIdContext + RlsAssistant | |
-| 7 | tenant-tck 合规测试集 | |
+| 2 | 租户表实体 SPI + DDL 初始化器 | ✅ |
+| 3 | @PlatformDomain/@TenantDomain 双面守卫 | ✅ |
+| 4 | TenantAuthTemplate + 内置认证端点 | ✅ |
+| 5 | SecretService + RegistrationKeyService | ✅ |
+| 6 | UserIdContext + RlsAssistant | ✅ |
+| 7 | tenant-tck 合规测试集 | ✅ |
 
 ## 快速开始
 
