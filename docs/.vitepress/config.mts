@@ -53,6 +53,14 @@ export default defineConfig({
           ]
         },
         {
+          text: '租户',
+          items: [
+            { text: '租户横切面', link: '/modules/tenant' },
+            { text: '租户设计契约', link: '/modules/tenant-中间件中台租户设计' },
+            { text: '模块设计方案', link: '/modules/tenant-framework4j-tenant模块设计' },
+          ]
+        },
+        {
           text: '流量',
           items: [
             { text: '限流', link: '/modules/rate-limit' },

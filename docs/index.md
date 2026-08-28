@@ -4,7 +4,7 @@ layout: home
 hero:
   name: framework4j
   text: 企业级 Spring Boot 基础设施 SDK
-  tagline: 16 模块覆盖鉴权、缓存、Redis、数据源、ID、幂等、限流、签名、审计、脱敏
+  tagline: 17 模块覆盖鉴权、缓存、Redis、数据源、ID、幂等、限流、签名、审计、脱敏、多租户
   actions:
     - theme: brand
       text: 快速开始
