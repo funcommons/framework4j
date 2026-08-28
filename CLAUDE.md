@@ -24,6 +24,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `framework4j-sensitive` | Field masking (Jackson) + AES-256-GCM encryption (MyBatis TypeHandler) | `framework4j.sensitive.*` |
 | `framework4j-transport` | HTTP transport abstraction (RestTemplate / WebClient switch), shared by other modules. Since v1.4.2 (Issue #18) `framework4jHttpTransport` resolves its RestTemplate via `ObjectProvider` + optional `rest-template-bean-name` pin — ≥2 business RestTemplates no longer crash startup (falls back to built-in default + WARN); 0/1-bean reuse semantics unchanged | `framework4j.transport.*` |
 | `framework4j-tracelog` | Runtime trace logging (logback appender + sampling/rate-limiting + query API + sensitive-field masking; added v1.3.0) | `framework4j.tracelog.*` |
+| `framework4j-tenant` | Multi-tenant middleware cross-cutting starter (tenant table `{table-prefix}tenant` via entity SPI, `@PlatformDomain`/`@TenantDomain` dual guards, client_credentials auth endpoint, secret lifecycle, registration-key channel, RLS assistant). Step 1 skeleton only (auto-config + properties); **not** in `framework4j-all` — opt-in domain module. Design: benefit4j `documents/framework4j-tenant模块设计.md` v1.1 | `framework4j.tenant.*` |
 | `framework4j-all` | Convenience aggregator pulling all 16 starters (api, web, datetime, id, sql-tracing, redis, datasource, accesstoken, idempotency, signature, rate-limit, cache, audit, sensitive, transport, tracelog) | — |
 
 ## Common commands

@@ -30,6 +30,7 @@
         <module>framework4j-sensitive</module>
         <module>framework4j-transport</module>
         <module>framework4j-tracelog</module>
+        <module>framework4j-tenant</module>
         <module>framework4j-compat-test</module>
         <module>framework4j-all</module>
     </modules>
@@ -254,6 +255,11 @@
             <dependency>
                 <groupId>fun.commons</groupId>
                 <artifactId>framework4j-tracelog</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>fun.commons</groupId>
+                <artifactId>framework4j-tenant</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
