@@ -71,7 +71,8 @@ TenantSchema tenantSchema() {
 | `framework4j.tenant.auth.lock-minutes` | `15` | 锁定时长(分钟) |
 | `framework4j.tenant.auth.token-type` | `TENANT` | 签发型别(存量项目可配 `APP` 兼容) |
 | `framework4j.tenant.auth.expire-seconds` | `28800` | 8h;上限 43200(12h,§5.2) |
-| `framework4j.tenant.platform.client-id/secret` | `PLATFORM`/空 | 平台合成租户(tenant_id=0)凭据 |
+| `framework4j.tenant.platform.client-id/secret` | `PLATFORM`/空 | 平台合成租户凭据 |
+| `framework4j.tenant.platform.tenant-id` | `0` | 平台身份的 tenant_id 取值(≥0;守卫与认证模板共用) |
 | `framework4j.tenant.secret.grace-hours` | `24` | 密钥轮换宽限期(小时) |
 | `framework4j.tenant.registration-key.enabled` | `false` | 注册码通道(§6.2,按需开) |
 | `framework4j.tenant.rls.mode` | `OFF` | OFF / POLICY(就位不 FORCE) / FULL(强制) |
@@ -132,7 +133,7 @@ regKeyService.register("RK-xxx", "租户名", "contact@example.com");
 mvn -pl framework4j-tenant test
 ```
 
-56 个测试:配置契约(6)+ 实体契约(5)+ DDL 生成(3)+ DDL 初始化(6)+ 守卫矩阵(7)+ 认证矩阵(8)+ 密钥/注册码(6)+ UserId(3)+ RLS(4)+ MyBatis 全链(2)+ 装配(4)。
+58 个测试:配置契约(8)+ 实体契约(5)+ DDL 生成(3)+ DDL 初始化(6)+ 守卫矩阵(8,含可配平台身份)+ 认证矩阵(8)+ 密钥/注册码(6)+ UserId(3)+ RLS(4)+ MyBatis 全链(2)+ 装配(4)。
 
 ## 6. 合规验收(tenant-tck)
 

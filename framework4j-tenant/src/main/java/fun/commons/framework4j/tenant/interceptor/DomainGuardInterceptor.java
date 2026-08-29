@@ -28,7 +28,18 @@ public class DomainGuardInterceptor implements HandlerInterceptor {
     /** token claim 键:租户身份(§5.3 双面守卫的唯一事实源) */
     public static final String CLAIM_TENANT_ID = "tenant_id";
 
+    /** 平台身份的 tenant_id 取值(默认 0,与 framework4j.tenant.platform.tenant-id 对齐) */
+    private final long platformTenantId;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public DomainGuardInterceptor() {
+        this(0L);
+    }
+
+    public DomainGuardInterceptor(long platformTenantId) {
+        this.platformTenantId = platformTenantId;
+    }
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
@@ -50,13 +61,15 @@ public class DomainGuardInterceptor implements HandlerInterceptor {
             return reject(response, "token 缺少有效的 tenant_id claim(tenant_id=0 平台身份 / >0 租户身份)");
         }
         if (platform) {
-            if (tenantId != 0L) {
-                return reject(response, "平台域需要平台身份(tenant_id=0),租户身份(tenant_id=" + tenantId + ")不可访问");
+            if (tenantId != platformTenantId) {
+                return reject(response, "平台域需要平台身份(tenant_id=" + platformTenantId
+                        + "),租户身份(tenant_id=" + tenantId + ")不可访问");
             }
             return true;
         }
-        if (tenantId <= 0L) {
-            return reject(response, "租户域需要真实租户身份(tenant_id>0),平台身份(tenant_id=0)不可作为记账主体(§5.3/§6.2)");
+        if (tenantId <= 0L || tenantId == platformTenantId) {
+            return reject(response, "租户域需要真实租户身份(tenant_id>0),平台身份(tenant_id="
+                    + platformTenantId + ")不可作为记账主体(§5.3/§6.2)");
         }
         return true;
     }

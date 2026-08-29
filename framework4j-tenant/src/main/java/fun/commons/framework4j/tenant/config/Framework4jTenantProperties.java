@@ -122,7 +122,7 @@ public class Framework4jTenantProperties {
     }
 
     /**
-     * 平台合成租户(tenant_id=0)凭据 —— 平台域管理面,不是记账主体(租户设计 §5.3)。
+     * 平台合成租户凭据 —— 平台域管理面,不是记账主体(租户设计 §5.3)。
      */
     @Data
     public static class Platform {
@@ -130,6 +130,13 @@ public class Framework4jTenantProperties {
         private String clientId = "PLATFORM";
 
         private String clientSecret = "";
+
+        /**
+         * 平台身份的 tenant_id 取值(合成租户,不依赖 DB 行)。默认 0 ——
+         * 真实租户 id 为雪花正整数,0 天然不冲突;双面守卫与认证模板共用此值。
+         */
+        @jakarta.validation.constraints.Min(0)
+        private long tenantId = 0;
     }
 
     /**

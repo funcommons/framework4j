@@ -98,6 +98,7 @@ framework4j:
     platform:
       client-id: ${PLATFORM_CLIENT_ID:PLATFORM}
       client-secret: ${PLATFORM_CLIENT_SECRET:}
+      tenant-id: 0                   # 平台身份的 tenant_id 取值(默认 0;守卫/认证模板共用)
     secret:
       grace-hours: 24
     registration-key:

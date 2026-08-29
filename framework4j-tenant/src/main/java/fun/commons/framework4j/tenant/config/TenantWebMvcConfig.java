@@ -27,9 +27,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnProperty(prefix = "framework4j.tenant", name = "enabled", havingValue = "true")
 public class TenantWebMvcConfig implements WebMvcConfigurer {
 
+    private final Framework4jTenantProperties properties;
+
+    public TenantWebMvcConfig(Framework4jTenantProperties properties) {
+        this.properties = properties;
+    }
+
     @Bean
     public DomainGuardInterceptor domainGuardInterceptor() {
-        return new DomainGuardInterceptor();
+        return new DomainGuardInterceptor(properties.getPlatform().getTenantId());
     }
 
     @Bean

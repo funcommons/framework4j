@@ -31,9 +31,10 @@ class Framework4jTenantPropertiesTest {
         assertThat(p.getAuth().getTokenType()).isEqualTo("TENANT");
         assertThat(p.getAuth().getExpireSeconds()).isEqualTo(28800);   // 8h(文档 §5.2)
 
-        // 平台合成租户(tenant_id=0)
+        // 平台合成租户(tenant_id 默认 0,可配)
         assertThat(p.getPlatform().getClientId()).isEqualTo("PLATFORM");
         assertThat(p.getPlatform().getClientSecret()).isEmpty();
+        assertThat(p.getPlatform().getTenantId()).isZero();
 
         // 密钥宽限期
         assertThat(p.getSecret().getGraceHours()).isEqualTo(24);
@@ -56,5 +57,14 @@ class Framework4jTenantPropertiesTest {
 
         p.setTablePrefix("demo_");
         assertThat(p.tenantTableName()).isEqualTo("demo_tenant");
+    }
+
+    @Test
+    @DisplayName("平台 tenant-id 可配(默认 0,≥0)")
+    void platformTenantId_configurable() {
+        Framework4jTenantProperties p = new Framework4jTenantProperties();
+        assertThat(p.getPlatform().getTenantId()).isZero();
+        p.getPlatform().setTenantId(0L);
+        assertThat(p.getPlatform().getTenantId()).isZero();
     }
 }

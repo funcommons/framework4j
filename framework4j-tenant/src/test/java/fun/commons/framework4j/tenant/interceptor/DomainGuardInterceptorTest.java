@@ -137,4 +137,20 @@ class DomainGuardInterceptorTest {
         TokenContext.set("APP", Map.of("tenant_id", 0L));
         mockMvc.perform(get("/t/both")).andExpect(status().isForbidden());
     }
+
+    @Test
+    @DisplayName("平台身份取值可配(framework4j.tenant.platform.tenant-id):非默认 0 时守卫跟随")
+    void configurablePlatformTenantId() throws Exception {
+        MockMvc customMvc = MockMvcBuilders
+                .standaloneSetup(new TenantRuntimeController(), new PlatformOpsController())
+                .addInterceptors(new DomainGuardInterceptor(999L))   // 平台身份 = 999
+                .build();
+
+        TokenContext.set("APP", Map.of("tenant_id", 999L));
+        customMvc.perform(get("/t/platform")).andExpect(status().isOk());       // 999 → 平台域放行
+        customMvc.perform(get("/t/runtime")).andExpect(status().isForbidden()); // 999 → 租户域拒
+
+        TokenContext.set("APP", Map.of("tenant_id", 0L));
+        customMvc.perform(get("/t/platform")).andExpect(status().isForbidden()); // 0 不再是平台身份
+    }
 }

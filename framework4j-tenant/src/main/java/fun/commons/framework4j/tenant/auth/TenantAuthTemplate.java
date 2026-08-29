@@ -149,7 +149,7 @@ public class TenantAuthTemplate {
         // 基类抽象,合成对象用轻量匿名子类(仅认证/签发用,不落库)
         TenantEntity platform = new TenantEntity() {
         };
-        platform.setId(0L);
+        platform.setId(properties.getPlatform().getTenantId());   // 平台身份(默认 0,可配)
         platform.setName(properties.getPlatform().getClientId());
         platform.setStatus("ACTIVE");
         return platform;
