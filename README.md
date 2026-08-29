@@ -45,7 +45,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.4.2</version>
+    <version>v1.5.0</version>
 </dependency>
 ```
 
@@ -61,7 +61,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.4.2</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
@@ -144,6 +144,7 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
+| **v1.5.0** | **新增 framework4j-tenant / framework4j-tenant-tck**:多租户中间件租户横切面(契约层=中间件中台租户设计 v2.1)——TenantEntity 基类+实体子类 SPI(表名={项目简码前缀}tenant)+ DDL 初始化器(AUTO 幂等建表/缺列补列,PROVIDED 模板)/ @PlatformDomain+@TenantDomain 双面守卫 MVC 自动注册 / TenantAuthTemplate+内置端点(平台合成租户、防爆破 5次15min、密钥宽限期双版本)/ TenantSecretService(reset+撤销存量会话)+ RegistrationKeyService(注册码通道,Redis 原子扣减)/ UserIdContext(X-User-Id 永不鉴权)+ TenantIdentity(claim 优先+默认租户回落,单租户模式 default-tenant-id)/ RlsAssistant(OFF/POLICY/FULL);platform.tenant-id 平台身份取值可配(默认 0);60+ 测试全绿。tenant-tck = 设计 §10 的机器可执行版(结构 T1-T3 + 行为 T4-T8) |
 | **v1.4.2** | **framework4j-transport 修复 GitHub Issue #18**：`framework4jHttpTransport(RestTemplate)` 形参按类型注入，业务方声明 ≥2 个 `RestTemplate` Bean 时 `NoUniqueBeanDefinitionException` 启动失败（即使未使用 HttpTransport 也触发，模块自 1.2.9 引入即有此缺陷）。修复：形参改 `ObjectProvider`——新增 `framework4j.transport.rest-template-bean-name` 显式指定复用的 Bean（按名取用，配错启动报错）；未配置时唯一候选自动复用（业务 0 个→框架兜底 / 1 个→复用业务实例 / 多个但标 `@Primary`→复用主 Bean），歧义时**降级内置默认实例 + WARN 列出候选 Bean 名**，不再崩溃。注：issue 中建议的 `@Qualifier("framework4jRestTemplate")` 方案本身不成立——业务方声明 ≥1 个 RestTemplate 时该 Bean 因 `@ConditionalOnMissingBean` 让位不存在，按名注入必失败。存量 0/1 个 RestTemplate 场景行为逐一不变。模块首套测试（6 用例，ApplicationContextRunner） |
 | **v1.4.1** | **framework4j-accesstoken 角色鉴权（GitHub Issue #16 方案 A）+ path-patterns 语义修正（Issue #17）**。`@RequiresToken` 新增 `roles()`（全匹配 AND）/ `anyRole()`（任一匹配 OR）声明式角色校验：角色从 **Redis claims** 的 `roles` 键读取（非 JWT payload），新增 `AccessTokenGenerator#updateClaims(tokenType, uid, claims)` 让角色变更（升权/降权）**全端实时生效**——无需重签 token / 重登（TTL 以 SET KEEPTTL 原样保留）；校验失败返回 `10300 FORBIDDEN`（与 10200 未认证区分）；fail-closed：存量老 token 无 `roles` claim 时新加角色校验的端点返回 403，重登或 `updateClaims` 后恢复；`type=refresh` 端点不做角色校验；两属性空默认值，存量注解零影响。**行为变更**：`path-patterns` 显式空列表从"拦截 `/**`"（Spring `addPathPatterns(空)` 语义，反直觉）改为**跳过拦截器注册 + WARN**；默认 `/**` 与非空列表不变，关闭模块请用 `enabled: false`。新增 13 个测试（角色校验 / updateClaims 实时生效与 TTL 保留 / 空列表注册锁定），模块 97 tests 全绿 |
 | **v1.3.0 – v1.4.0** | 新增 `framework4j-tracelog` 模块（运行链路日志：logback appender + 采样限速 + 查询 API；v1.4.0 补敏感字段脱敏 + 4 个运行链路集成测试；v1.3.1–v1.3.3 修复接入阻断与运行链路 bug、web 模块 MDC traceId 兜底过滤器，详见 git log） |

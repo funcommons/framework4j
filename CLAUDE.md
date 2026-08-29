@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.4.2`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.5.0`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
@@ -24,7 +24,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `framework4j-sensitive` | Field masking (Jackson) + AES-256-GCM encryption (MyBatis TypeHandler) | `framework4j.sensitive.*` |
 | `framework4j-transport` | HTTP transport abstraction (RestTemplate / WebClient switch), shared by other modules. Since v1.4.2 (Issue #18) `framework4jHttpTransport` resolves its RestTemplate via `ObjectProvider` + optional `rest-template-bean-name` pin — ≥2 business RestTemplates no longer crash startup (falls back to built-in default + WARN); 0/1-bean reuse semantics unchanged | `framework4j.transport.*` |
 | `framework4j-tracelog` | Runtime trace logging (logback appender + sampling/rate-limiting + query API + sensitive-field masking; added v1.3.0) | `framework4j.tracelog.*` |
-| `framework4j-tenant` | Multi-tenant middleware cross-cutting starter (tenant table `{table-prefix}tenant` via entity SPI, `@PlatformDomain`/`@TenantDomain` dual guards, client_credentials auth endpoint, secret lifecycle, registration-key channel, RLS assistant). Step 1 skeleton only (auto-config + properties); **not** in `framework4j-all` — opt-in domain module. Design: benefit4j `documents/framework4j-tenant模块设计.md` v1.1 | `framework4j.tenant.*` |
+| `framework4j-tenant` | Multi-tenant middleware cross-cutting starter (tenant table `{table-prefix}tenant` via entity SPI + DDL initializer AUTO/PROVIDED, `@PlatformDomain`/`@TenantDomain` dual guards with auto MVC registration, `TenantAuthTemplate` + built-in auth endpoint — platform synthetic tenant / brute-force lock / secret grace window, `TenantSecretService` reset + `TenantSessionRevoker`, `RegistrationKeyService` channel, `UserIdContext` + `TenantIdentity` (claim-first + `default-tenant-id` single-tenant fallback), `RlsAssistant` OFF/POLICY/FULL, `platform.tenant-id` configurable default 0). **Not** in `framework4j-all` — opt-in domain module. Design: `docs/modules/tenant-中间件中台租户设计.md` v2.1 | `framework4j.tenant.*` |
+| `framework4j-tenant-tck` | Tenant compliance TCK (test-jar): `TenantComplianceSuite` — structure assertions T1-T3 + behavior T4-T8 (project supplies `TenantComplianceContext`) | — |
 | `framework4j-all` | Convenience aggregator pulling all 16 starters (api, web, datetime, id, sql-tracing, redis, datasource, accesstoken, idempotency, signature, rate-limit, cache, audit, sensitive, transport, tracelog) | — |
 
 ## Common commands
