@@ -22,6 +22,7 @@ class Framework4jTenantPropertiesTest {
         assertThat(p.isEnabled()).isFalse();
         assertThat(p.getTablePrefix()).isEmpty();
         assertThat(p.getDdlMode()).isEqualTo(DdlMode.AUTO);
+        assertThat(p.getDefaultTenantId()).as("默认空 = 多租户模式").isNull();
 
         // 认证端点
         assertThat(p.getAuth().isEnabled()).isTrue();

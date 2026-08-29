@@ -31,14 +31,26 @@ public class DomainGuardInterceptor implements HandlerInterceptor {
     /** 平台身份的 tenant_id 取值(默认 0,与 framework4j.tenant.platform.tenant-id 对齐) */
     private final long platformTenantId;
 
+    /**
+     * 默认租户(单租户模式,framework4j.tenant.default-tenant-id):
+     * 请求无 tenant_id claim 时按此租户放行租户域;null = 多租户模式(无 claim 即 403)。
+     * claim 存在时永远优先;claim 非法(不可解析)仍拒绝 —— 不用默认值掩盖认证问题。
+     */
+    private final Long defaultTenantId;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public DomainGuardInterceptor() {
-        this(0L);
+        this(0L, null);
     }
 
     public DomainGuardInterceptor(long platformTenantId) {
+        this(platformTenantId, null);
+    }
+
+    public DomainGuardInterceptor(long platformTenantId, Long defaultTenantId) {
         this.platformTenantId = platformTenantId;
+        this.defaultTenantId = defaultTenantId;
     }
 
     @Override
@@ -58,6 +70,9 @@ public class DomainGuardInterceptor implements HandlerInterceptor {
         }
         Long tenantId = readTenantIdClaim();
         if (tenantId == null) {
+            if (tenant && defaultTenantId != null && !hasClaim()) {
+                return true;   // 单租户模式:租户域无 claim → 默认租户放行(claim 非法不在此列)
+            }
             return reject(response, "token 缺少有效的 tenant_id claim(tenant_id=0 平台身份 / >0 租户身份)");
         }
         if (platform) {
@@ -72,6 +87,11 @@ public class DomainGuardInterceptor implements HandlerInterceptor {
                     + platformTenantId + ")不可作为记账主体(§5.3/§6.2)");
         }
         return true;
+    }
+
+    /** claim 是否存在(区分「无 claim」与「claim 非法」—— 单租户模式只对前者放行) */
+    private static boolean hasClaim() {
+        return fun.commons.framework4j.accesstoken.context.TokenContext.getClaim(CLAIM_TENANT_ID) != null;
     }
 
     /** claim 解析容忍 Number/String(benefit4j 兼容形态);缺失/非法 → null(默认拒绝) */

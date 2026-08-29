@@ -65,6 +65,7 @@ TenantSchema tenantSchema() {
 | `framework4j.tenant.enabled` | `false` | 总开关(含 DDL/端点注册,须显式开启) |
 | `framework4j.tenant.table-prefix` | —(必填) | 项目简码_,如 `ubma_`;租户表 = `{table-prefix}tenant` |
 | `framework4j.tenant.ddl-mode` | `AUTO` | AUTO 幂等建表 / PROVIDED 由项目迁移工具管理 |
+| `framework4j.tenant.default-tenant-id` | 空(多租户) | 单租户模式:无 claim 时按此租户放行租户域(>0;平台域不受影响);业务取数走 `TenantIdentity.currentTenantId` |
 | `framework4j.tenant.auth.enabled` | `true` | 内置认证端点开关 |
 | `framework4j.tenant.auth.path` | `/api/v1/auth/token` | 认证端点路径 |
 | `framework4j.tenant.auth.max-fail` | `5` | 连续失败锁定阈值 |
@@ -133,7 +134,7 @@ regKeyService.register("RK-xxx", "租户名", "contact@example.com");
 mvn -pl framework4j-tenant test
 ```
 
-58 个测试:配置契约(8)+ 实体契约(5)+ DDL 生成(3)+ DDL 初始化(6)+ 守卫矩阵(8,含可配平台身份)+ 认证矩阵(8)+ 密钥/注册码(6)+ UserId(3)+ RLS(4)+ MyBatis 全链(2)+ 装配(4)。
+64 个测试:配置契约(8)+ 实体契约(5)+ DDL 生成(3)+ DDL 初始化(6)+ 守卫矩阵(8,含可配平台身份)+ 认证矩阵(8)+ 密钥/注册码(6)+ UserId(3)+ RLS(4)+ MyBatis 全链(2)+ 装配(4)。
 
 ## 6. 合规验收(tenant-tck)
 

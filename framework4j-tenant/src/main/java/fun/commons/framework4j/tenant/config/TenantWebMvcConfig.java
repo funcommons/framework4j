@@ -35,7 +35,8 @@ public class TenantWebMvcConfig implements WebMvcConfigurer {
 
     @Bean
     public DomainGuardInterceptor domainGuardInterceptor() {
-        return new DomainGuardInterceptor(properties.getPlatform().getTenantId());
+        return new DomainGuardInterceptor(properties.getPlatform().getTenantId(),
+                properties.getDefaultTenantId());
     }
 
     @Bean

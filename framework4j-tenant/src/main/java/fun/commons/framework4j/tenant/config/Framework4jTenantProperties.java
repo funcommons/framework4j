@@ -42,6 +42,15 @@ public class Framework4jTenantProperties {
     private DdlMode ddlMode = DdlMode.AUTO;
 
     /**
+     * 默认租户(单租户模式):请求无 tenant_id claim 时按此租户处理。
+     * null = 多租户模式(默认,无 claim 的租户域请求 403);
+     * 配置真实租户 id(&gt;0)即开启单租户模式 —— 内部系统/单体部署免 token 直调租户域。
+     * 注意:claim 存在时永远优先(混合期平滑);平台域不受此配置影响,仍须平台身份。
+     */
+    @Positive(message = "default-tenant-id 须为真实租户 id(>0);0 是平台身份,不能作默认租户")
+    private Long defaultTenantId;
+
+    /**
      * 内置认证端点(client_credentials)。
      */
     @Valid

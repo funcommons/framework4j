@@ -88,6 +88,7 @@ framework4j:
     enabled: true
     table-prefix: ubma_             # 租户表 = {table-prefix}tenant(项目简码规范)
     ddl-mode: AUTO                  # AUTO 启动幂等建表 / PROVIDED 输出 SQL 模板由项目迁移工具管理
+    default-tenant-id:               # 单租户模式:无 claim 按此租户(>0);空=多租户(默认)
     auth:
       enabled: true                  # 内置认证端点
       path: /api/v1/auth/token

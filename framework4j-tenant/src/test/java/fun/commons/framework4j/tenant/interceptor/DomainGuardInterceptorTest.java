@@ -153,4 +153,27 @@ class DomainGuardInterceptorTest {
         TokenContext.set("APP", Map.of("tenant_id", 0L));
         customMvc.perform(get("/t/platform")).andExpect(status().isForbidden()); // 0 不再是平台身份
     }
+
+    @Test
+    @DisplayName("单租户模式(default-tenant-id):租户域无 claim 时按默认租户放行;平台域仍须平台身份")
+    void defaultTenantId_singleTenantMode() throws Exception {
+        MockMvc singleTenantMvc = MockMvcBuilders
+                .standaloneSetup(new TenantRuntimeController(), new PlatformOpsController())
+                .addInterceptors(new DomainGuardInterceptor(0L, 1L))   // 默认租户 = 1
+                .build();
+
+        // 无 claim:租户域放行(默认租户),平台域仍 403(平台身份不因单租户模式放开)
+        singleTenantMvc.perform(get("/t/runtime")).andExpect(status().isOk());
+        singleTenantMvc.perform(get("/t/platform")).andExpect(status().isForbidden());
+
+        // 显式 claim 优先于默认租户(混合期:有 token 的按 token 走)
+        TokenContext.set("APP", Map.of("tenant_id", 5L));
+        singleTenantMvc.perform(get("/t/runtime")).andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("默认租户未配置(多租户模式):无 claim 的租户域仍 403 —— 行为不变")
+    void noDefaultTenantId_multiTenantUnchanged() throws Exception {
+        mockMvc.perform(get("/t/runtime")).andExpect(status().isForbidden());
+    }
 }
