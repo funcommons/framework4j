@@ -132,6 +132,34 @@ class TenantAuthTemplateTest {
     }
 
     @Test
+    @DisplayName("embed-claims 默认 true:JWT payload 嵌套 claims 键携带 tenant_id(Issue #23)")
+    @SuppressWarnings("unchecked")
+    void embedClaims_payloadCarriesTenantId() {
+        String token = (String) template.postToken("client_credentials", "1001", "s-main").getData().get("access_token");
+        Map<String, Object> payload = TokenUtils.parseToken(token, "test-secret-key-for-jwt-must-be-at-least-32-chars!!");
+        assertThat(payload).containsKey("claims");
+        Map<String, Object> claims = (Map<String, Object>) payload.get("claims");
+        assertThat(claims.get("tenant_id")).isEqualTo(1001);
+
+        // 平台身份同样可判:payload.claims.tenant_id = 0
+        String platformToken = (String) template.postToken("client_credentials", "PLATFORM", "plat-secret").getData().get("access_token");
+        Map<String, Object> platformPayload = TokenUtils.parseToken(platformToken, "test-secret-key-for-jwt-must-be-at-least-32-chars!!");
+        assertThat((Map<String, Object>) platformPayload.get("claims")).containsEntry("tenant_id", 0);
+    }
+
+    @Test
+    @DisplayName("embed-claims=false → payload 无 claims 键(回落 1.6.x 非自包含行为)")
+    @SuppressWarnings("unchecked")
+    void embedClaimsOff_payloadHasNoClaimsKey() {
+        props.getAuth().setEmbedClaims(false);
+        String token = (String) template.postToken("client_credentials", "1001", "s-main").getData().get("access_token");
+        Map<String, Object> payload = TokenUtils.parseToken(token, "test-secret-key-for-jwt-must-be-at-least-32-chars!!");
+        assertThat(payload).doesNotContainKey("claims");
+        // 会话侧 claims 不受影响(校验信任源仍是 Redis 会话)
+        assertThat(redis.hasKey(sessionKey(1001L))).isTrue();
+    }
+
+    @Test
     @DisplayName("租户主密钥:client_id 三形态(原始 id / OpenID / name)皆可认证")
     void tenantMasterSecret_threeClientIdForms() {
         for (String clientId : new String[]{"1001", IdObfuscator.toOpenId(1001L), "acme"}) {

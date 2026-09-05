@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
 </dependency>
 <!-- 自动引入 accesstoken/sensitive/id/datasource/web 等 -->
 ```
@@ -72,6 +72,7 @@ TenantSchema tenantSchema() {
 | `framework4j.tenant.auth.lock-minutes` | `15` | 锁定时长(分钟) |
 | `framework4j.tenant.auth.token-type` | `TENANT` | 签发型别(存量项目可配 `APP` 兼容) |
 | `framework4j.tenant.auth.expire-seconds` | `28800` | 8h;上限 43200(12h,§5.2) |
+| `framework4j.tenant.auth.embed-claims` | `true` | 签发时把业务 claims(含 `tenant_id`)嵌入 JWT payload(嵌套 `claims` 键,Issue #23)—— token 自包含,前端解码即可判身份域;校验仍只信 Redis 会话,可撤销/热更语义不变。关闭回落 1.6.x 非自包含行为 |
 | `framework4j.tenant.platform.client-id/secret` | `PLATFORM`/空 | 平台合成租户凭据 |
 | `framework4j.tenant.platform.tenant-id` | `0` | 平台身份的 tenant_id 取值(≥0;守卫与认证模板共用) |
 | `framework4j.tenant.secret.grace-hours` | `24` | 密钥轮换宽限期(小时) |
@@ -142,7 +143,7 @@ mvn -pl framework4j-tenant test
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant-tck</artifactId>
-    <version>1.6.0</version>
+    <version>1.7.0</version>
     <scope>test</scope>
 </dependency>
 ```

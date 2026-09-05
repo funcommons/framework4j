@@ -64,6 +64,23 @@ public class AccessTokenGenerator {
      * 生成 Access Token
      */
     public String generateToken(String tokenType, Map<String, Object> claims) {
+        return generateToken(tokenType, claims, false);
+    }
+
+    /**
+     * 生成 Access Token(Issue #23):可选把业务 claims 嵌入 JWT payload。
+     * <p>
+     * claims 以 <b>嵌套 {@code payload.claims} 键</b>写入,不拍平 —— 业务 claim 与系统字段
+     * (type/jti/nonce/hash/iss/sub/iat/exp/family)同名时会静默覆盖、破坏 token 语义,嵌套彻底规避。
+     * <p>
+     * 仅影响 payload 可见性,<b>不影响信任语义</b>:校验链路
+     * ({@code AccessTokenValidationStrategy})继续从 Redis 会话 metadata 读 claims 填充
+     * TokenContext,可撤销 / claims 热更(updateClaims)语义完整保留;
+     * payload 中的 claims 仅供持有方解码读取(token 自包含),不作为服务端信任源。
+     *
+     * @param embedInPayload true 时业务 claims 嵌入 payload;false 即 1.6.x 行为(仅存会话)
+     */
+    public String generateToken(String tokenType, Map<String, Object> claims, boolean embedInPayload) {
         if (claims == null) {
             throw new AuthException(10200, "Claims 不能为 null");
         }
@@ -117,6 +134,7 @@ public class AccessTokenGenerator {
         return TokenUtils.createToken(
                 tokenType, nonce, keyHash,
                 appName, now, exp, jti,
+                null, embedInPayload ? claims : null,
                 properties.getSecretKey());
     }
 

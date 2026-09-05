@@ -128,6 +128,14 @@ public class Framework4jTenantProperties {
         @Positive
         @Max(value = 43200, message = "expire-seconds 上限 43200(12h,租户设计 §5.2:M2M token 不发 refresh)")
         private long expireSeconds = 28800;
+
+        /**
+         * 签发时把业务 claims(含 tenant_id)嵌入 JWT payload(嵌套 claims 键,Issue #23)。
+         * 默认 true —— 对齐租户设计 §5.2 claim 示例,token 自包含,前端/对端服务无需
+         * 反查即可判身份域;校验链路不受影响(仍只信 Redis 会话 claims,可撤销/热更语义不变)。
+         * 需要收敛 payload 暴露面的消费方可显式关闭(关闭即回落 1.6.x 行为,token 非自包含)。
+         */
+        private boolean embedClaims = true;
     }
 
     /**

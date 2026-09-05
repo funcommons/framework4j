@@ -74,7 +74,11 @@ public class TenantAuthTemplate {
         Map<String, Object> claims = new LinkedHashMap<>();
         claims.put("tenant_id", tenant.getId());
 
-        String token = tokenGenerator.generateToken(properties.getAuth().getTokenType(), claims);
+        // embed-claims(Issue #23): 业务 claims 同步嵌入 JWT payload(嵌套 claims 键),
+        // token 自包含 —— 持有方(前端/对端服务)解码 payload 即可判身份域,无需反查端点。
+        // 校验链路不变:服务端仍只信 Redis 会话 claims。
+        String token = tokenGenerator.generateToken(
+                properties.getAuth().getTokenType(), claims, properties.getAuth().isEmbedClaims());
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("access_token", token);

@@ -65,7 +65,7 @@ public class TokenUtils {
     public static String createToken(String type, String nonce, String keyHash,
                                      String iss, long iat, long exp, String jti,
                                      String secret) {
-        return createToken(type, nonce, keyHash, iss, iat, exp, jti, null, secret);
+        return createToken(type, nonce, keyHash, iss, iat, exp, jti, null, null, secret);
     }
 
     /**
@@ -74,6 +74,23 @@ public class TokenUtils {
     public static String createToken(String type, String nonce, String keyHash,
                                      String iss, long iat, long exp, String jti,
                                      String family, String secret) {
+        return createToken(type, nonce, keyHash, iss, iat, exp, jti, family, null, secret);
+    }
+
+    /**
+     * 生成 JWT 格式字符串（含 family + 业务 claims,Issue #23）
+     * <p>
+     * 业务 claims 以<b>嵌套 {@code payload.claims} 键</b>写入,不拍平 —— 业务 claim 与系统字段
+     * (type/jti/nonce/hash/iss/sub/iat/exp/family)同名时会静默覆盖系统值、破坏 token 语义。
+     * claims 仅供持有方解码读取(token 自包含);服务端校验链路不读 payload claims
+     * (信任源仍是 Redis 会话 metadata),签名保证 payload 不可篡改。
+     *
+     * @param businessClaims 业务 claims(tenant_id 等);null/空 = 不嵌入(1.6.x 行为)
+     */
+    public static String createToken(String type, String nonce, String keyHash,
+                                     String iss, long iat, long exp, String jti,
+                                     String family, Map<String, Object> businessClaims,
+                                     String secret) {
         Map<String, Object> payloadMap = new HashMap<>();
         payloadMap.put("iss", iss);
         payloadMap.put("sub", type);
@@ -85,6 +102,9 @@ public class TokenUtils {
         payloadMap.put("jti", jti);
         if (family != null) {
             payloadMap.put("family", family);
+        }
+        if (businessClaims != null && !businessClaims.isEmpty()) {
+            payloadMap.put("claims", businessClaims);
         }
 
         String payload = Base64.getUrlEncoder().withoutPadding()
