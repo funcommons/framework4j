@@ -7,11 +7,8 @@ import fun.commons.framework4j.web.ApiResponse;
 import fun.commons.framework4j.web.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
@@ -273,36 +270,6 @@ public class GlobalExceptionHandler {
         return ApiResponse.fail(ApiCode.FILE_SIZE_EXCEED, "文件大小超过限制");
     }
 
-    /**
-     * 处理数据库唯一键冲突 (Duplicate Key)
-     */
-    @ExceptionHandler(DuplicateKeyException.class)
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<?> handleDuplicateKeyException(DuplicateKeyException e) {
-        log.warn("[数据库唯一键冲突] {}", e.getMessage());
-        // 通常意味着插入了重复数据
-        return ApiResponse.fail(ApiCode.BUSINESS_RULE_ERROR, "数据已存在，请勿重复提交");
-    }
-
-    /**
-     * 处理数据库 SQL 语法错误
-     */
-    @ExceptionHandler(BadSqlGrammarException.class)
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<?> handleBadSqlGrammarException(BadSqlGrammarException e) {
-        log.error("[数据库SQL语法错误]", e);
-        return ApiResponse.fail(ApiCode.SYSTEM_BUSY, "数据库操作异常");
-    }
-
-    /**
-     * 处理数据库数据完整性异常 (如字段过长、非空约束等)
-     */
-    @ExceptionHandler(DataIntegrityViolationException.class)
-    @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<?> handleDataIntegrityViolationException(DataIntegrityViolationException e) {
-        log.error("[数据库数据完整性异常]", e);
-        return ApiResponse.fail(ApiCode.BUSINESS_RULE_ERROR, "数据操作失败，请检查数据约束");
-    }
 
     /**
      * 处理非法参数异常

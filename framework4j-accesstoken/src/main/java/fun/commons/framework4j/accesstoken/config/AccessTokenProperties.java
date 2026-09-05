@@ -64,7 +64,11 @@ public class AccessTokenProperties {
     @Setter
     public static class Policy {
         /**
-         * 互斥键字段名 (必填)
+         * 互斥键字段名 (必填) —— <strong>这是 claims 必需字段名列表,不是签名密钥</strong>(Issue #20)。
+         * <p>
+         * 语义:该型别 generateToken 时 claims 必须包含的字段名(如 [tenant_id] / [uid]),
+         * 决定会话 key 的互斥维度(同 key 值再次签发互斥/覆盖)。
+         * 签名密钥请配置 framework4j.access-token.secret-key,两者不要混淆。
          * 支持单个字段 "uid" 或联合主键 ["uid", "deviceId"]
          */
         private List<String> key;
@@ -105,6 +109,10 @@ public class AccessTokenProperties {
         private Integer maxRotations = 20;
 
         // v2.1: getter/setter 由 Lombok @Getter/@Setter 生成。setKeyFromString 保留自定义逻辑（支持单字段 String 配置）。
+        /**
+         * 便捷 setter:单字段场景(等价 key=[singleKey])。
+         * 参数是 <strong>claims 字段名</strong>(如 "tenant_id"),不是签名密钥。
+         */
         public void setKeyFromString(String singleKey) {
             if (singleKey != null && !singleKey.isEmpty()) {
                 this.key = List.of(singleKey);

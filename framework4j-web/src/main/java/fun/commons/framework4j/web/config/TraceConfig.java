@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -21,11 +20,19 @@ import java.io.IOException;
  * 全链路追踪配置
  * <p>
  * 配置过滤器，将 Micrometer 生成的 Trace ID 写入 HTTP 响应头，方便前端调试。
+ * <p>
+ * v1.6.0(Issue #21/ADR-0009 缺口1):装配顺序修复 —— 本类带 @ConditionalOnBean(Tracer.class),
+ * 此前经 WebAutoConfiguration @Import 以普通 @Configuration 注册,@ConditionalOnBean 在
+ * 普通配置类上按处理顺序评估、不保证晚于 MicrometerTracingAutoConfiguration →
+ * Tracer 尚未装配时本类被静默跳过(traceIdResponseHeaderFilter 永不注册)。
+ * 改为 @AutoConfiguration(afterName=MicrometerTracingAutoConfiguration) +
+ * AutoConfiguration.imports 直接注册,保证评估顺序在 Tracer 之后。
  *
  * @since 1.0.0
  */
 @Slf4j
-@Configuration
+@org.springframework.boot.autoconfigure.AutoConfiguration(
+        afterName = "org.springframework.boot.actuate.autoconfigure.tracing.MicrometerTracingAutoConfiguration")
 @ConditionalOnClass(Tracer.class)
 @ConditionalOnBean(Tracer.class)
 @ConditionalOnProperty(

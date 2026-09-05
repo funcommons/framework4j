@@ -298,7 +298,10 @@ public class AccessTokenGenerator {
         for (String k : keys) {
             Object val = claims.get(k);
             if (val == null) {
-                throw new AuthException(10200, "生成 Token 失败：Claims 中缺少必要的 Key 字段 [" + k + "]");
+                // Issue #20: 报错文案区分「claims 字段名」与「配置值」—— policy.key 是 claims 必需
+                // 字段名列表(决定会话互斥维度),不是签名密钥;误配时旧文案会把配置值回显成缺失字段名
+                throw new AuthException(10200, "生成 Token 失败:claims 缺少 policy.key 声明的必需字段 [" + k
+                        + "](policy.key 是 claims 字段名列表,不是签名密钥;请在 generateToken 的 claims 中带上该字段)");
             }
             values.add(String.valueOf(val));
         }

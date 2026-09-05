@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * 注册 Web 层契约：
  * <ul>
  *   <li>{@link GlobalExceptionHandler}（@RestControllerAdvice 自动扫描）</li>
- *   <li>{@link TraceConfig}（Micrometer Tracing + MDC + X-Trace-Id 响应头）</li>
+ *   <li>{@link TraceConfig}（Micrometer Tracing + MDC + X-Trace-Id 响应头——自 v1.6.0 起独立 AutoConfiguration 注册,见 imports）</li>
  *   <li>{@link WebConfig}（Jackson snake_case + Long→String + JavaTimeModule）</li>
  * </ul>
  * <p>
@@ -28,12 +28,24 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnClass({ApiResponse.class, WebMvcConfigurer.class})
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(prefix = "framework4j.web", name = "enabled", matchIfMissing = true)
-@Import({TraceConfig.class, WebConfig.class})
+@Import({WebConfig.class})
 public class WebAutoConfiguration {
 
     @Bean
     @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
     public GlobalExceptionHandler globalExceptionHandler() {
         return new GlobalExceptionHandler();
+    }
+
+    /**
+     * DAO/DB 异常 advice(Issue #19):仅当 classpath 有 spring-jdbc 才装配 ——
+     * 拆出独立类是因为 @ExceptionHandler 方法签名在 MVC 内省 advice 时必须解析,
+     * 合在主 advice 里会让纯 Web(不带 spring-jdbc)的应用启动期 NoClassDefFoundError。
+     */
+    @Bean
+    @ConditionalOnClass(org.springframework.jdbc.BadSqlGrammarException.class)
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+    public fun.commons.framework4j.web.exception.DataAccessExceptionAdvice dataAccessExceptionAdvice() {
+        return new fun.commons.framework4j.web.exception.DataAccessExceptionAdvice();
     }
 }

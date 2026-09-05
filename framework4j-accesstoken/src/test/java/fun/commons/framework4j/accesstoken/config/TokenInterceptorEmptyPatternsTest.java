@@ -32,6 +32,10 @@ import static org.mockito.Mockito.when;
 @SpringJUnitConfig(TokenInterceptorEmptyPatternsTest.TestConfig.class)
 @WebAppConfiguration
 @TestPropertySource(properties = {
+        "framework4j.access-token.policies.APP.key[0]=uid",
+        "framework4j.access-token.secret-key=test-secret-key-for-jwt-must-be-at-least-32-chars",
+        "framework4j.access-token.hash-salt=test-salt",
+
         "framework4j.access-token.enabled=true",
         "framework4j.access-token.path-patterns=",
         "spring.application.name=empty-patterns-test"

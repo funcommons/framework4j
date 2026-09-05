@@ -43,6 +43,18 @@ public class AccessTokenAutoConfiguration {
     private String appName;
 
     /**
+     * v1.6.0(Issue #20):配置完整性启动期 fail-fast —— secretKey/hashSalt/policies/key 语义
+     * 全部在此校验,不再延迟到首次 generateToken 运行时才发现。
+     */
+    @Bean
+    public AccessTokenConfigValidator.Marker accessTokenConfigValidator(AccessTokenProperties properties) {
+        AccessTokenConfigValidator.validate(properties);
+        log.info("【AccessToken】配置校验通过(policies 型别: {})",
+                properties.getPolicies() == null ? "[]" : properties.getPolicies().keySet());
+        return new AccessTokenConfigValidator.Marker();
+    }
+
+    /**
      * v2.1 P1 修复：抽 StringRedisTemplate 单例 Bean，避免三个 Bean 各自调 getStringRedisTemplate。
      * <p>原 accessTokenGenerator / refreshTokenService / tokenInterceptor 各自走 MultiRedisManager 解析链，
      * 同一 redisName 解析三次。改为单例后只解析一次，且保证三个组件使用同一实例。
