@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
 </dependency>
 <!-- 自动引入 accesstoken/sensitive/id/datasource/web 等 -->
 ```
@@ -142,7 +142,7 @@ mvn -pl framework4j-tenant test
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant-tck</artifactId>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
     <scope>test</scope>
 </dependency>
 ```
