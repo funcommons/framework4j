@@ -7,6 +7,8 @@ import fun.commons.framework4j.web.ApiResponse;
 import fun.commons.framework4j.web.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -45,6 +47,7 @@ import java.util.Set;
  * @since 1.0.1
  */
 @Slf4j
+@Order(Ordered.LOWEST_PRECEDENCE) // v1.7.1(Issue #24): 兜底 advice 必须殿后——跨 advice 匹配"第一个含匹配方法者胜",不排序会抢跑具体 advice(如 DataAccessExceptionAdvice)
 @RestControllerAdvice
 @ConditionalOnProperty(
         prefix = "framework4j.api.exception-handler",

@@ -7,6 +7,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.BadSqlGrammarException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,8 +21,15 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * Spring MVC 内省 handler 方法签名时类解析失败 → 未携带 spring-jdbc 的纯 Web 应用启动即炸。
  * 本类由 WebAutoConfiguration 以 {@code @ConditionalOnClass(BadSqlGrammarException.class)}
  * 条件装配 —— 带 spring-jdbc 的应用照常生效,不带的应用不受影响。
+ * <p>
+ * v1.7.1(GitHub Issue #24): 显式声明 @Order。Spring MVC 跨 advice 解析规则是
+ * 「按 Order 排序后,第一个含匹配方法的 advice 胜出」(不做全局最具体匹配);
+ * 本类必须先于 {@link GlobalExceptionHandler} 的 {@code @ExceptionHandler(Exception.class)}
+ * 兜底被匹配,否则 DuplicateKeyException 等被兜底吃掉 → 500,而契约是 200 + 业务信封。
+ * 取 HIGHEST_PRECEDENCE + 100:宿主如需自定义翻译,可用更小 Order 值抢占。
  */
 @Slf4j
+@Order(Ordered.HIGHEST_PRECEDENCE + 100)
 @RestControllerAdvice
 public class DataAccessExceptionAdvice {
 
