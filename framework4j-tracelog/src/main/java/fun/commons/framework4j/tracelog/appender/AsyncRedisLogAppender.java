@@ -104,7 +104,7 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
                     bufferSize,
                     new NamedThreadFactory("TraceLog-Worker-" + i),
                     ProducerType.MULTI,
-                    new com.lmax.disruptor.YieldingWaitStrategy());
+                    new com.lmax.disruptor.BlockingWaitStrategy());
             BatchWorker handler = new BatchWorker(i);
             d.handleEventsWithWorkerPool(handler);
             d.start();
