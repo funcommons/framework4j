@@ -101,6 +101,14 @@ public class IdempotencyInterceptor implements HandlerInterceptor {
         if (!WRITE_METHODS.contains(request.getMethod().toUpperCase())) {
             return true;
         }
+        // v1.7.2 契约修复（回归 2026-09-21-04 BL03 P1-1）：multipart 请求整体跳过幂等裁决 ——
+        // 幂等语义仅覆盖 JSON 请求体，multipart 上传透传（与 token-gateway IdempotencyWebFilter 同口径）。
+        // 此前 multipart 带键也会进裁决：宿主 MultipartSafeIdempotencyConfig 替换掉 BodyCacheFilter 后
+        // multipart 无 ContentCachingRequestWrapper，hashBody fail-secure 分支抛 IOException → 500(10001)，
+        // 图生视频参考图上传 100% 失败。multipart 判定在键读取与 UUID 校验之前，畸形键也不再 400。
+        if (IdempotencyBodyCacheFilter.isMultipart(request)) {
+            return true;
+        }
         String headerName = properties.getHeaderName();
         String key = request.getHeader(headerName);
         if (key == null || key.isEmpty()) {

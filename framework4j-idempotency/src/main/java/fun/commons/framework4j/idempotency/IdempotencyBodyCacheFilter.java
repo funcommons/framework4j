@@ -22,9 +22,32 @@ import java.io.IOException;
  *   <li>主动 readAllBytes 触发 ContentCachingRequestWrapper 缓存（修 preHandle 时 buf 为空的 bug）</li>
  *   <li>同时 wrap response，让拦截器 afterCompletion 能拿到响应体（修回放空响应 bug）</li>
  * </ul>
+ * <p>
+ * v1.7.2 契约修复（回归 2026-09-21-04 BL03 P1-1）：multipart 请求整体跳过（{@link #shouldNotFilter}），
+ * 不包装 request/response、不缓存 body —— 幂等语义仅覆盖 JSON 请求体（与 token-gateway
+ * IdempotencyWebFilter 同口径）。cacheBody() 会读尽 multipart 原始流，破坏下游
+ * StandardServletMultipartResolver 的 boundary 解析（历史故障：{@code Required part 'file' is not present}），
+ * 且拦截器侧对 multipart 已整体跳过裁决，缓存 body 不再有任何消费方。
  */
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
 public class IdempotencyBodyCacheFilter extends OncePerRequestFilter {
+
+    /**
+     * multipart 识别（幂等契约：Content-Type 前缀匹配 multipart/* 族；畸形/缺失视为非 multipart）。
+     * <p>拦截器（整体跳过裁决）与本过滤器（跳过 body 缓存）共用同一判定，保证两侧口径恒一致。
+     */
+    static boolean isMultipart(HttpServletRequest request) {
+        String contentType = request.getContentType();
+        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
+    }
+
+    /**
+     * v1.7.2: multipart 请求不过本过滤器 —— 原样放行，保住 multipart 流式解析与透传契约。
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return isMultipart(request);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
