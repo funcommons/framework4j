@@ -7,7 +7,7 @@
 
     <groupId>fun.commons</groupId>
     <artifactId>framework4j</artifactId>
-    <version>1.7.2</version>
+    <version>1.7.3</version>
     <packaging>pom</packaging>
 
     <name>Commons SDK</name>
