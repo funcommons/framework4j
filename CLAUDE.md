@@ -142,6 +142,13 @@ When changing the obfuscator, run the regression suite under `framework4j-id/src
 
 ## Reference documentation in the repo
 
+**Unified AI-consumer skill** (single source, since v1.8): `skills/framework4j/` — `SKILL.md` entry
+(jar download coords + module routing table + cross-module hard rules, ~120 lines) +
+`references/<module>.md` (16+1 精华 docs, loaded on demand by AI tools). Third-party AI tools copy the
+directory into their own skill location. The old per-module `skills/fwk4j-<module>/` directories were
+removed in v1.8; `docs/skills/fwk4j-*.md` are the docs-site mirror of the same content (sync from
+`skills/framework4j/references/`, don't edit both).
+
 Per-module design docs (Chinese) live next to the source:
 
 - `framework4j-api/API 响应结构与错误码规范 v1.3.md`, `API 统一响应与错误码 SDK (v1.3) 使用指南.md` — module-level error-code conventions (authoritative spec is `.claude/skills/mc-api-spec/API 响应结构与错误码规范 v1.6.md`)

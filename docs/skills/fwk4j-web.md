@@ -23,13 +23,26 @@ return ApiResponse.fail(ApiCode.NOT_FOUND, "订单不存在");
 - 未知系统异常（NPE）→ HTTP 500 + 10001
 - **无需手写**，AutoConfiguration 自动装配
 
-## TraceContext
+## TraceContext 与 trace_id 链路（v1.8 契约，mc-monitor 对齐）
 
 ```java
-String traceId = TraceContext.getTraceId();  // 从 MDC / Micrometer Tracer 取
+String traceId = TraceContext.getTraceId();  // MDC（可配置 key）→ Micrometer Tracer → null
 ```
 
-响应头自动返 `X-Trace-Id`。
+`traceIdMdcFilter`（最高优先级，`/*`）自动完成（无需任何代码）：
+
+1. **入站采纳**：上游/网关传入的 `X-Trace-Id` 经 sanitize（trim 后 16~64 位、`[A-Za-z0-9._-]` 白名单）合法即采纳，跨服务链路不断裂；非法/缺失才本地生成 UUID
+2. **响应头回显**：进 chain 之前回写 `X-Trace-Id`——提前提交响应/抛异常路径也带
+3. Micrometer Tracing 已写 MDC 时不覆盖不清理，仅补响应头
+
+```yaml
+framework4j:
+  api:
+    trace:
+      enabled: true          # 默认开
+      header-name: X-Trace-Id  # 入站采纳 + 回显的 header 名
+      mdc-key: traceId         # MDC key 可配置；tracelog 采集侧同步生效
+```
 
 ## Jackson 全局配置（自动生效）
 
@@ -48,7 +61,7 @@ String traceId = TraceContext.getTraceId();  // 从 MDC / Micrometer Tracer 取
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-web</artifactId>
-    <version>v1.2.8</version>
+    <version>v1.8.0</version>
 </dependency>
 ```
 

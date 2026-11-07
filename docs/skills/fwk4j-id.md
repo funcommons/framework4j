@@ -32,20 +32,26 @@ String prefixed = IdObfuscator.toOpenId(original, "ORD"); // → "ORD_DxjWpoSI9f
 
 ## WorkerIdStrategy
 
-| 策略 | 说明 |
+| 策略（`worker.strategy`） | 说明 |
 |---|---|
-| `redis`（默认） | Redis 租约（0-1023 slot，心跳 CAS 续期） |
-| `ip-hash` | IP 哈希（无 Redis 场景） |
+| `redis`（默认） | Redis 租约（0-1023 slot，心跳 CAS 续期）；Redis 不可达时自动降级 ip（v1.8 `fallback-to-ip`，默认 true；槽位耗尽仍失败不降级） |
+| `ip` | IP 哈希（无 Redis 场景；注意合法值是 `ip` 不是 `ip-hash`） |
 
 ## 配置
 
 ```yaml
 framework4j:
   id:
-    enabled: true
-    worker-id-strategy: redis  # 或 ip-hash
+    enabled: true              # v1.8 起显式启用（缺省不激活，issue #26）
+    worker:
+      strategy: redis          # redis | ip（键是 worker.strategy，不是 worker-id-strategy）
+      fallback-to-ip: true     # Redis 不可达降级，保启动成功（默认 true）
     mybatis:
-      enabled: true            # 自动注册 MyBatis Plus IdentifierGenerator
+      enabled: true            # 自动注册 MyBatis Plus IdentifierGenerator（父开关开启后缺省跟随）
+  openid:
+    enabled: true              # v1.8 起显式启用（缺省不激活）
+    # 子开关缺省跟随父开关：accept-numeric-fallback=true（裸数字兼容）、
+    # request-body-deserializer=true、support-integer/string=false、fail-fast=true
 ```
 
 ## 引入
@@ -54,6 +60,6 @@ framework4j:
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-id</artifactId>
-    <version>v1.2.8</version>
+    <version>v1.8.0</version>
 </dependency>
 ```

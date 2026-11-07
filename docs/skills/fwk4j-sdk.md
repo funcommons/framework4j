@@ -1,30 +1,52 @@
+---
+name: framework4j
+description: >
+  framework4j Spring Boot 3 企业 SDK 开发激活（默认）。16 模块全功能：统一响应信封
+  （ApiResponse/ApiCode/GlobalExceptionHandler 全异常 HTTP 200）、鉴权（AccessToken JWT +
+  RefreshToken family + @RequiresToken 角色）、接口签名（HMAC 防重放）、限流（Lua 滑动窗口）、
+  多级缓存（Caffeine+Redis 防穿透击穿雪崩）、幂等键、审计日志（Hash Chain 防篡改）、
+  字段脱敏/加密（AES-256-GCM）、分布式 ID（Snowflake + OpenID 混淆）、多 Redis/DataSource
+  数据源（@RedisOn/@DataSourceOn）、多租户（tenant）、SQL trace 追踪、运行时日志（tracelog）、
+  时间处理、HTTP transport。触发词：framework4j、fwk4j、ApiResponse、ApiCode、错误码、信封、
+  @RequiresToken、AccessToken、RefreshToken、JWT、登录鉴权、角色、@RequiresSignature、
+  HMAC、签名防重放、@RateLimit、限流、@CacheableGet、多级缓存、缓存穿透、击穿、雪崩、
+  @Auditable、审计、@Sensitive、脱敏、加密、Idempotency-Key、幂等、防重复提交、
+  Snowflake、雪花、OpenID、@OpenId、混淆、分布式 ID、@RedisOn、@DataSourceOn、多数据源、
+  租户、tenant、X-Trace-Id、trace_id、链路追踪、traceId、X-Token-Expire-At、踢下线、
+  revokeByUser、OffsetDateTime、时间格式。
+version: 1.8.0
+enabled: true
+metadata:
+  type: sdk-spec
+  category: backend
+  language: zh-CN
+  spring-boot: "3.5"
+  java: "17"
+  group-id: fun.commons
+  jitpack-group: com.github.funcommons.framework4j
+  related-skills: [mc-java-spec, mc-api-spec, mc-java-security, mc-monitor]
+  author: funcommons
+  examples:
+    - "写一个需要登录的接口"            # → references/accesstoken.md
+    - "返回值统一包装/错误码"           # → references/api.md + references/web.md
+    - "开放 API 防重放"                 # → references/signature.md
+    - "接口限流/缓存防击穿"             # → references/rate-limit.md / references/cache.md
+    - "手机号脱敏/数据库字段加密"       # → references/sensitive.md
+    - "防止重复提交"                    # → references/idempotency.md
+    - "生成分布式 ID / ID 混淆防爬"     # → references/id.md
+    - "多 Redis/多数据源切换"           # → references/redis.md / references/datasource.md
+    - "多租户隔离"                      # → references/tenant.md
+    - "关键操作审计"                    # → references/audit.md
+---
 
-# framework4j SDK 使用指南
+# framework4j SDK（统一技能 · 单源 · 按需加载）
 
-## 0. 用户速查
+Spring Boot 3.5 / Java 17 企业 SDK，16 个独立 starter + 可选租户模块。
+本文件是**唯一常驻入口**；模块细节在 `references/`，**命中场景时才读取对应文件，禁止一次性全读**。
 
-| 你想 | 入口 |
-|---|---|
-| 引入依赖 / 快速开始 | §1 引入方式 |
-| 接口需要登录才能访问 | §2 AccessToken 鉴权 |
-| 开放 API 签名防重放 | §3 接口签名 |
-| 接口限流 | §4 限流 |
-| 缓存（防穿透/击穿/雪崩） | §5 多级缓存 |
-| 关键操作审计 | §6 审计日志 |
-| 手机号/身份证脱敏 | §7 字段脱敏 |
-| DB 字段加密存储 | §8 字段加密 |
-| 防止重复提交 | §9 幂等键 |
-| 生成分布式 ID | §10 分布式 ID |
-| 多 Redis 数据源 | §11 多 Redis |
-| 多 DataSource | §12 多 DataSource |
-| 统一 API 响应格式 | §13 ApiResponse |
-| Token 过期通知客户端 | §14 Token 续期 |
-| 管理员踢用户下线 | §15 强制下线 |
-| 退出本规范 | 「退出 fwk4j-sdk」 |
+## 1. 架包下载
 
-## 1. 引入方式
-
-### JitPack（推荐）
+### 方式一：JitPack（免安装仓库，推荐第三方）
 
 ```xml
 <repositories>
@@ -34,381 +56,77 @@
     </repository>
 </repositories>
 
-<!-- 全量引入 -->
+<!-- 全家桶（16 starter 聚合，不含 tenant） -->
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.2.8</version>
+    <version>v1.8.0</version>
 </dependency>
-
-<!-- 或按需引入单模块 -->
-<dependency>
-    <groupId>com.github.funcommons.framework4j</groupId>
-    <artifactId>framework4j-signature</artifactId>
-    <version>v1.2.8</version>
-</dependency>
+<!-- 或按需单个 starter：把 artifactId 换成下表任意一个 -->
 ```
 
-### 最小配置
+### 方式二：源码本地 install（groupId 变为 `fun.commons`）
 
-```yaml
-spring:
-  application:
-    name: my-app  # 必填（Redis key 前缀 + JWT iss）
-
-framework4j:
-  redis:
-    enabled: true
-    datasources:
-      default:
-        host: localhost
-        port: 6379
+```bash
+git clone https://github.com/funcommons/framework4j.git && cd framework4j
+mvn -DskipTests install
 ```
 
----
-
-## 2. AccessToken 鉴权
-
-### 生成 Token
-
-```java
-@Autowired
-private AccessTokenGenerator generator;
-
-// 生成 access token
-String token = generator.generateToken("WEB", Map.of("uid", "u-123"));
-
-// 生成 access + refresh pair
-TokenPair pair = refreshTokenService.generateTokenPair(Map.of("uid", "u-123"));
-```
-
-### 保护接口
-
-```java
-@RequiresToken("WEB")  // 校验 access token
-@GetMapping("/v1/users/{id}")
-public ApiResponse<User> getUser(@PathVariable String id) { ... }
-```
-
-### Refresh 轮转
-
-```java
-@PostMapping("/v1/auth/refresh")
-public ApiResponse<?> refresh(@RequestBody RefreshRequest req) {
-    TokenPair pair = refreshTokenService.refreshAccessToken(req.getRefreshToken());
-    return ApiResponse.success(pair);
-}
-```
-
-### 配置
-
-```yaml
-framework4j:
-  access-token:
-    enabled: true
-    redis-name: default
-    secret-key: ${JWT_SECRET}       # 必须 ≥ 32 字符
-    hash-salt: ${HASH_SALT}
-    policies:
-      WEB:
-        key: [uid]
-        expire-time: 7200            # 2 小时
-        auto-renew: true
-        renew-increment: 1800        # 续期 30 分钟
-```
-
----
-
-## 3. 接口签名（HMAC-SHA256）
-
-### 签名算法
-
-```
-签名串 = METHOD\nPATH\nTIMESTAMP\nNONCE\nBODY_MD5
-签名值 = BASE64(HMAC_SHA256(secret, 签名串))
-```
-
-### 请求 Header
-
-| Header | 说明 |
-|---|---|
-| `X-Access-Key` | 应用标识 |
-| `X-Timestamp` | Unix 毫秒（±5min） |
-| `X-Nonce` | UUID v4（10min 一次性） |
-| `X-Signature` | BASE64 签名值 |
-
-### 保护接口
-
-```java
-@RequiresSignature
-@PostMapping("/v1/api/orders")
-public ApiResponse<?> createOrder(@RequestBody OrderRequest req) { ... }
-```
-
-### 配置
-
-```yaml
-framework4j:
-  signature:
-    enabled: true
-    path-patterns: ["/v1/api/**"]
-    timestamp-tolerance-ms: 300000
-    nonce-ttl-seconds: 600
-```
-
----
-
-## 4. 限流
-
-### 注解式
-
-```java
-@RateLimit(limit = 100, window = "1m", scope = "user")
-@PostMapping("/v1/sms/send")
-public ApiResponse<?> sendSms(@RequestBody SmsRequest req) { ... }
-```
-
-### scope 维度
-
-| scope | key 格式 | 适用 |
-|---|---|---|
-| `ip`（默认） | `ratelimit:ip:{ip}:{path}` | 公网 IP |
-| `user` | `ratelimit:user:{uid}:{path}` | 已登录用户 |
-| `global` | `ratelimit:global:global:{path}` | 全局限流 |
-
-### 白名单（健康检查/内部服务豁免）
-
-```yaml
-framework4j:
-  rate-limit:
-    whitelist-paths: ["/actuator/**", "/health/**"]
-    whitelist-ips: ["10.0.0.1"]
-```
-
----
-
-## 5. 多级缓存
-
-### 编程式
-
-```java
-@Autowired
-private CacheService cacheService;
-
-User user = cacheService.get("user", id, 3600,
-    () -> userMapper.selectById(id), User.class);
-cacheService.put("user", id, 3600, user);
-cacheService.evict("user", id);
-```
-
-### 注解式
-
-```java
-@CacheableGet(prefix = "user", key = "#id", nullTtl = 5)
-public User getUser(String id) { ... }
-
-@CacheablePut(prefix = "user", key = "#id")
-public User updateUser(String id, String name) { ... }
-
-@CacheableEvict(prefix = "user", key = "#id")
-public void deleteUser(String id) { ... }
-```
-
-### 批量预热
-
-```java
-@PostConstruct
-void warmup() {
-    cacheService.warmup("user", hotIds, 3600,
-        id -> userMapper.selectById(id), User.class);
-}
-```
-
----
-
-## 6. 审计日志
-
-### 注解
-
-```java
-@Auditable(action = "DELETE_ORDER", targetType = "order", targetIdSpel = "#orderId")
-public void deleteOrder(String orderId) { ... }
-```
-
-### 安全责任
-
-> `actor` 取自 `X-User-Id`、`ip` 取自 `X-Forwarded-For`。
-> **必须由网关在入口覆写后才可信。**
-
----
-
-## 7. 字段脱敏
-
-### Jackson 自动脱敏
-
-```java
-public class UserVO {
-    @Sensitive(SensitiveRule.PHONE)     private String phone;    // 138****5678
-    @Sensitive(SensitiveRule.ID_CARD)   private String idCard;   // 110101********1234
-    @Sensitive(SensitiveRule.EMAIL)     private String email;    // a***@example.com
-    @Sensitive(SensitiveRule.NAME)      private String name;     // 张**
-    @Sensitive(value = SensitiveRule.CUSTOM, pattern = "2,2,4")
-    private String orderNo;                                     // AB****GH
-}
-```
-
----
-
-## 8. 字段加密（DB 存储层）
-
-### MyBatis TypeHandler
-
-```java
-@TableName(autoResultMap = true)
-public class UserDO {
-    @TableField(typeHandler = EncryptedFieldTypeHandler.class)
-    private String idCard;  // DB 存密文，Java 层是明文
-}
-```
-
-### 配置
-
-```yaml
-framework4j:
-  sensitive:
-    enabled: true
-    encryption-key: ${AES_KEY}  # 生产从 KMS 取
-```
-
----
-
-## 9. 幂等键
-
-客户端在写操作请求头加 `Idempotency-Key: <UUID v4>`，服务端自动防重。
-
-```yaml
-framework4j:
-  idempotency:
-    enabled: true
-    ttl-seconds: 172800  # 48h
-```
-
----
-
-## 10. 分布式 ID
-
-### Snowflake
-
-```java
-@Autowired
-private SnowflakeDistributor snowflake;
-
-long id = snowflake.nextId();  // → 892310293123123
-```
-
-### OpenID 混淆
-
-```java
-String openId = IdObfuscator.toOpenId(123456789L);      // → "DxjWpoSI9f6Q"
-long original = IdObfuscator.fromOpenId(openId);         // → 123456789
-String prefixed = IdObfuscator.toOpenId(123456789L, "ORD"); // → "ORD_DxjWpoSI9f6Q"
-```
-
----
-
-## 11. 多 Redis 数据源
-
-### 配置
-
-```yaml
-framework4j:
-  redis:
-    datasources:
-      default: { host: localhost, port: 6379 }
-      cache:  { host: cache.redis.com, database: 1 }
-```
-
-### 注解注入
-
-```java
-@RedisOn("cache")
-private StringRedisTemplate cacheTemplate;
-```
-
----
-
-## 12. 多 DataSource
-
-### 配置
-
-```yaml
-framework4j:
-  datasource:
-    datasources:
-      default: { url: jdbc:postgresql://localhost/mydb }
-      business: { url: jdbc:postgresql://localhost/business }
-```
-
-### 注解注入
-
-```java
-@DataSourceOn("business")
-private DataSource businessDs;
-```
-
----
-
-## 13. ApiResponse
-
-```java
-@GetMapping("/v1/orders/{id}")
-public ApiResponse<Order> getOrder(@PathVariable String id) {
-    Order order = orderService.get(id);
-    return ApiResponse.success(order);
-}
-// → {"code":0,"message":"操作成功","data":{...},"trace_id":"xxx","timestamp":1718660400000}
-```
-
----
-
-## 14. Token 续期通知
-
-每次 access token 校验通过后，响应头自动返回剩余有效期：
-
-```
-X-Token-Expire-At: 5400
-```
-
-客户端在剩余 < 5min 时主动调 `/v1/auth/refresh`。
-
----
-
-## 15. 强制下线
-
-```java
-// 管理员踢出用户的所有设备
-int revoked = generator.revokeByUser("WEB", "user-123");
-// → 删除该用户所有 session + jti 加入撤销 Set
-```
-
----
-
-## 全链路组合示例
-
-```java
-@RestController
-@RequestMapping("/v1/api")
-public class OrderController {
-
-    @RequiresSignature                          // 签名校验
-    @RateLimit(limit = 100, window = "1m")      // 限流
-    @Auditable(action = "CREATE_ORDER",         // 审计
-               targetType = "order",
-               targetIdSpel = "#req.orderId")
-    @PostMapping("/orders")
-    public ApiResponse<OrderVO> createOrder(@RequestBody CreateOrderRequest req) {
-        Order order = orderService.create(req);
-        return ApiResponse.success(toVO(order)); // VO 中 @Sensitive 自动脱敏
-    }
-}
-```
+### 模块速查（artifactId → 文档）
+
+| artifactId | 用途 | 激活 | 文档（按需读取） |
+|---|---|---|---|
+| framework4j-api | ApiCode 错误码契约 | 随 web | `references/api.md` |
+| framework4j-web | ApiResponse 信封 + 全异常 HTTP 200 + trace_id 链路 | 默认 | `references/web.md` |
+| framework4j-datetime | OffsetDateTime 序列化 + 时间转换器 | 默认 | `references/datetime.md` |
+| framework4j-id | Snowflake + OpenID 混淆 | **显式开（v1.8）** | `references/id.md` |
+| framework4j-redis | 多 Redis + @RedisOn | 显式开 | `references/redis.md` |
+| framework4j-datasource | 多 DataSource + @DataSourceOn | 显式开 | `references/datasource.md` |
+| framework4j-sql-tracing | SQL 语句 trace_id 前缀 | 默认 | `references/sql-tracing.md` |
+| framework4j-accesstoken | JWT + Refresh family + 角色鉴权 | 显式开 | `references/accesstoken.md` |
+| framework4j-idempotency | Idempotency-Key 幂等 | 默认 | `references/idempotency.md` |
+| framework4j-signature | HMAC 签名防重放 | 默认 | `references/signature.md` |
+| framework4j-rate-limit | Lua 滑动窗口限流 | 默认 | `references/rate-limit.md` |
+| framework4j-cache | 多级缓存（L1+L2+单飞） | 默认 | `references/cache.md` |
+| framework4j-audit | @Auditable + Hash Chain | 默认 | `references/audit.md` |
+| framework4j-sensitive | 脱敏 + AES-256-GCM 加密 | 默认 | `references/sensitive.md` |
+| framework4j-transport | RestTemplate/WebClient 切换 | 默认 | `references/transport.md` |
+| framework4j-tracelog | 运行时日志 Redis 采集 + 动态提权 | 显式开 | `references/tracelog.md` |
+| framework4j-tenant | 多租户（不在 all 内） | 显式开 | `references/tenant.md` |
+
+「显式开」= 需在 application.yml 设 `framework4j.<feature>.enabled=true`（v1.8 起 id/openid 同样；
+其余默认激活，设 false 可关）。每个模块的完整配置键见 `references/<module>.md` 与 docs 站
+`docs/config/reference.md`。
+
+## 2. 文档按需加载（本节即机制）
+
+- **先读本文件判断场景 → 只读命中的 `references/<module>.md`**（每文件 ≤100 行精华）。
+- 跨模块问题（如「登录+签名+审计完整链路」）读涉及的多个文件，各自独立。
+- 在线文档（离线降级）：`https://github.com/funcommons/framework4j/tree/main/docs`。
+- 设计文档不在 references 内：深入实现细节看仓库 `docs/modules/` 与各模块目录。
+
+## 3. 跨模块硬规范（任何模块组合都适用）
+
+1. **响应信封**：Controller 返回 `ApiResponse<T>`（code/message/data/error/trace_id/timestamp）；
+   失败 `data` 必须 null。错误码 5 位分段（ABCCC，格式见 `references/api.md`）。
+2. **HTTP 200 契约**：`GlobalExceptionHandler` 把一切异常翻译成信封并返回 HTTP 200
+   （未知系统异常除外 → 500/10001）。业务代码 throw 即可，无需 try/catch 包装。
+3. **JSON**：全局 snake_case + `Long → String`（防 JS 精度丢失）。VO 字段命名用驼峰，线上自动转。
+4. **`spring.application.name` 必配**：accesstoken / id(redis 策略) / tracelog 的 Redis key 前缀依赖它。
+5. **配置键**：一律 `framework4j.<module>.*`；唯一 kebab-case 例外是 `framework4j.access-token.*`
+   （不是 `accessToken`）。
+6. **v1.8 显式启用**：`framework4j.id.enabled` / `framework4j.openid.enabled` 缺省不激活（issue #26）；
+   redis/datasource/accesstoken/tenant/tracelog 历史上就是显式开。
+7. **token 双信任**：服务端只信 Redis 会话 claims（可撤销/热更 `updateClaims`）；
+   JWT payload 的嵌套 `claims` 键仅供持有方自助解码（`embed-claims` 开关）。
+8. **trace_id 链路**：`X-Trace-Id` 头入站自动采纳（16~64 位白名单校验）、响应自动回显、
+   MDC key 经 `framework4j.api.trace.mdc-key` 可配（`references/web.md` §Trace）。
+
+## 4. 新项目接入 checklist
+
+1. 引 `framework4j-all`（或按表挑 starter）；配 `spring.application.name`
+2. 起 Redis（localhost:6379 或多源 `framework4j.redis.datasources.*`）；开需要显式启用的模块
+3. 需要鉴权 → `framework4j.accesstoken.secret-key`（≥32 字符）+ policies（`references/accesstoken.md`）
+4. Controller 返回 `ApiResponse`；错误码复用 `ApiCode`，不够再扩枚举（ABCCC 格式）
+5. 日志 pattern 加 `%X{traceId:-}`；监控契约不同则改 `mdc-key`
+6. 遵守所在仓库的 mc-java-spec / mc-api-spec 规范（本 skill 只管 SDK 行为）
