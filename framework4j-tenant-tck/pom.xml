@@ -14,7 +14,7 @@
     <packaging>jar</packaging>
 
     <name>Commons Tenant TCK</name>
-    <description>租户合规测试集 —— 中间件中台租户设计 §10 的机器可执行版(独立 test-jar,任何项目引依赖跑绿即合规)</description>
+    <description>租户合规测试集 —— 中间件中台租户设计 §10 的机器可执行版(普通 jar 携带 compile 依赖,消费项目 test 继承 TenantComplianceSuite 跑绿即合规)</description>
 
     <dependencies>
         <!-- 被测模块(编译期) -->
