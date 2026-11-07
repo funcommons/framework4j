@@ -9,7 +9,7 @@
 
 ```groovy
 // Gradle
-testImplementation('com.github.funcommons.framework4j:framework4j-tenant-tck:1.8.0')
+testImplementation('com.github.funcommons.framework4j:framework4j-tenant-tck:1.9.0')
 ```
 
 ```xml
@@ -17,7 +17,7 @@ testImplementation('com.github.funcommons.framework4j:framework4j-tenant-tck:1.8
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant-tck</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.0</version>
     <scope>test</scope>
 </dependency>
 ```

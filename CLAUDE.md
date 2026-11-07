@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-`framework4j` (Maven groupId `fun.commons`, version `1.7.2`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+`framework4j` (Maven groupId `fun.commons`, version `1.9.0`) is a multi-module Spring Boot 3.5 / Java 17 enterprise SDK. Each module is an independently importable starter, and `framework4j-all` aggregates them. All modules publish their own Spring Boot auto-configuration through `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
 
 | Module | Purpose | Config prefix |
 | --- | --- | --- |
@@ -123,6 +123,8 @@ When changing the obfuscator, run the regression suite under `framework4j-id/src
 > **v1.2.5 registration fix (downstream benefit4j report #5)**: `IdempotencyAutoConfiguration` now `@Import`s `IdempotencyWebMvcConfig` — previously the registration class existed but was wired nowhere (v2.1 @Component→@Bean migration orphaned it), so the interceptor bean was created but never entered the MVC chain and idempotency silently did nothing. Consumers must **not** register `IdempotencyInterceptor` themselves.
 >
 > **v1.2.7 reentrancy guard (report bug2 "first request always 409")**: `preHandle` now passes through if the request already carries the SETNX-success attribute — defends against the interceptor being registered twice (framework + consumer workaround), where the second pass read its own freshly-written PENDING and 409'd the same request. If "first request 409" reproduces after removing duplicate registration, check for **reused fixed UUIDs** (48h TTL residue from earlier runs).
+>
+> **v1.9 dependency-surface tightening (issue #27)**: idempotency's `spring-boot-starter-web` is now `<optional>true</optional>` (was the repo's ONLY non-optional web starter — the actual tomcat leak into `framework4j-all` consumers; cache/datetime were already optional despite the reporter's attribution). `IdempotencyAutoConfiguration` gained `@ConditionalOnClass(WebMvcConfigurer)` + `@ConditionalOnWebApplication(SERVLET)` — WebFlux/non-web consumers load nothing instead of `NoClassDefFoundError` on `IdempotencyWebMvcConfig`. Guard test: `IdempotencyServletFreeTest` (FilteredClassLoader). cache lost its vestigial `framework4j-web`/`jakarta.servlet-api` deps; signature/rate-limit `jakarta.servlet-api` is now `provided`. Structural contract: `DependencyLeakGuardTest` (compat-test) parses all 21 module poms — web starter must be optional, servlet-api must not be plain compile (demo exempt).
 
 ### SQL tracing (framework4j-sql-tracing)
 

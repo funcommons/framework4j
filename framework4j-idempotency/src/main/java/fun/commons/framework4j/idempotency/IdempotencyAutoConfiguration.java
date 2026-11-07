@@ -7,10 +7,12 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
  * Idempotency-Key 自动配置
@@ -27,10 +29,17 @@ import org.springframework.data.redis.core.StringRedisTemplate;
  * {@code AutoConfiguration.imports}、也未被本类引入 —— v2.1 从 @Component 扫描
  * 迁移到显式 @Bean 时被漏挂，导致拦截器 Bean 创建了但永不进 MVC 拦截链，
  * 幂等校验形同虚设。现与同库 RateLimit 的 rateLimitWebMvcConfig 对齐。
+ * <p>
+ * v1.9 修复（GitHub Issue #27）：spring-boot-starter-web 改 optional 后，本类对 servlet/webmvc
+ * 类的引用（{@link IdempotencyWebMvcConfig} / {@link IdempotencyInterceptor} /
+ * {@link IdempotencyBodyCacheFilter}）在 WebFlux / 非 Web 消费方会 NoClassDefFoundError——
+ * 补 {@code @ConditionalOnClass(WebMvcConfigurer)} + {@code @ConditionalOnWebApplication(SERVLET)}，
+ * 与 signature / rate-limit 口径对齐：非 servlet 环境整个装配静默跳过。
  */
 @Slf4j
 @AutoConfiguration
-@ConditionalOnClass({StringRedisTemplate.class, ObjectMapper.class})
+@ConditionalOnClass({StringRedisTemplate.class, ObjectMapper.class, WebMvcConfigurer.class})
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @EnableConfigurationProperties(IdempotencyProperties.class)
 @ConditionalOnProperty(prefix = "framework4j.idempotency", name = "enabled", havingValue = "true")
 @Import(IdempotencyWebMvcConfig.class)

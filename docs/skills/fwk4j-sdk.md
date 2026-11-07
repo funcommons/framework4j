@@ -14,7 +14,7 @@ description: >
   Snowflake、雪花、OpenID、@OpenId、混淆、分布式 ID、@RedisOn、@DataSourceOn、多数据源、
   租户、tenant、X-Trace-Id、trace_id、链路追踪、traceId、X-Token-Expire-At、踢下线、
   revokeByUser、OffsetDateTime、时间格式。
-version: 1.8.0
+version: 1.9.0
 enabled: true
 metadata:
   type: sdk-spec
@@ -60,7 +60,7 @@ Spring Boot 3.5 / Java 17 企业 SDK，16 个独立 starter + 可选租户模块
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.8.0</version>
+    <version>v1.9.0</version>
 </dependency>
 <!-- 或按需单个 starter：把 artifactId 换成下表任意一个 -->
 ```

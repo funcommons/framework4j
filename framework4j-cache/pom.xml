@@ -8,7 +8,7 @@
     <parent>
         <groupId>fun.commons</groupId>
         <artifactId>framework4j</artifactId>
-        <version>1.8.0</version>
+        <version>1.9.0</version>
     </parent>
 
     <artifactId>framework4j-cache</artifactId>
@@ -24,11 +24,9 @@
             <version>${project.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>fun.commons</groupId>
-            <artifactId>framework4j-web</artifactId>
-            <version>${project.version}</version>
-        </dependency>
+        <!-- v1.9 (issue #27)：framework4j-web / jakarta.servlet-api 依赖移除——
+             主代码与测试均零引用（遗留依赖），此前以 compile 传递把 web 面强加给
+             WebFlux 消费方。如业务需要 web 能力，请消费方自行显式引入。 -->
 
         <dependency>
             <groupId>fun.commons</groupId>
@@ -76,11 +74,6 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>jakarta.servlet</groupId>
-            <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
 
         <dependency>

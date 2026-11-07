@@ -45,7 +45,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.8.0</version>
+    <version>v1.9.0</version>
 </dependency>
 ```
 
@@ -61,7 +61,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.8.0</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 
@@ -144,6 +144,7 @@ public class OrderController {
 
 | 版本 | 关键变更 |
 |---|---|
+| **v1.9.0** | ⚠️ **依赖面收紧 — Issue #27**:SDK 各模块不再向消费方强加 servlet 容器面。① **[idempotency]** `spring-boot-starter-web` 改 `<optional>true</optional>`——此前是全仓库唯一 compile 非 optional 的 web starter（framework4j-all 消费方 tomcat-embed-core 泄漏的实际来源,WebFlux 反应式网关被翻转成 Tomcat 工厂 → WSS 握手 ClassCastException）;配套 `IdempotencyAutoConfiguration` 补 `@ConditionalOnClass(WebMvcConfigurer)` + `@ConditionalOnWebApplication(SERVLET)`——非 servlet 环境整体静默跳过（对齐 signature/rate-limit 口径）,与 #26 显式启用同理<br>② **[cache]** 删除遗留依赖 `framework4j-web` + `jakarta.servlet-api`（主代码与测试零引用）<br>③ **[signature/rate-limit]** `jakarta.servlet-api` compile→provided（拦截器主代码在用,容器提供,不外泄;对齐 accesstoken 口径）<br>④ **防回归**:`DependencyLeakGuardTest`（compat-test）解析 21 个模块 pom 锁定「web starter 必须 optional、servlet-api 不得裸 compile」结构契约;`IdempotencyServletFreeTest` 锁定无 servlet 环境装配跳过。**升级注意**:若消费方此前靠 idempotency/cache 传递获得 spring-boot-starter-web,请显式声明自己的 web 依赖 |
 | **v1.8.0** | ⚠️ **破坏性变更 — Issue #26/#25/#23 补全 + 统一 AI skill**:<br>① **[id] 显式启用（升级必读）**:`framework4j.id.enabled` / `framework4j.openid.enabled` 改 matchIfMissing=false——classpath 即激活的历史语义废除,升级后未显式配置=true 的应用模块静默失活（子开关 mybatis.enabled 等保持缺省跟随）。配套 fail-soft:redis 策略 WorkerID 申请失败自动降级 IP Hash（`framework4j.id.worker.fallback-to-ip`,默认 true;槽位耗尽仍抛错不降级防碰撞）,无 Redis 的测试/CI 不再启动即炸。新异常 `WorkerIdRedisException`(IllegalStateException 子类,向后兼容)。**配置键勘误**:文档历史键 `worker-id-strategy`/`ip-hash` 均不存在,真键 `framework4j.id.worker.strategy`(redis\|ip);`framework4j.id.epoch`/`redis.lease-seconds`/`redis.renew-interval` 为虚构键已从文档清除<br>② **[web/tracelog] trace_id 契约三缺口**（issue #25,兑现 mc-monitor 契约）:traceIdMdcFilter 采纳合法入站 X-Trace-Id（16~64 位白名单 sanitize,不再另行生成断链）;chain 前回显响应头（异常/提前提交路径也带）;MDC key 可配 `framework4j.api.trace.mdc-key`（默认 traceId 零破坏,tracelog 采集三处硬编码同步）<br>③ **[accesstoken] refresh 链路 claims 嵌入**（issue #23 补全）:新键 `framework4j.access-token.embed-claims`（默认 false）——此前签发嵌入后首次轮转 payload claims 即丢<br>④ **统一 AI skill**（第三方 AI 工具即拷即用）:15 个模块 skill 收敛为 `skills/framework4j/` 单源——SKILL.md 入口（~120 行,架包坐标+模块路由表+跨模块硬规范）+ references/ 17 个精华文档按需加载;旧 skills/fwk4j-<module>/ 目录删除<br>⑤ tenant-tck README 接入指引（issue #22）。测试:web 259/id 353/tracelog/accesstoken+tenant 全绿 |
 | v1.7.3 | redis pom jackson-databind 重复声明去重 |
 | v1.7.2 | idempotency multipart 请求整体放行 |

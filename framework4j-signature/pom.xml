@@ -8,7 +8,7 @@
     <parent>
         <groupId>fun.commons</groupId>
         <artifactId>framework4j</artifactId>
-        <version>1.8.0</version>
+        <version>1.9.0</version>
     </parent>
 
     <artifactId>framework4j-signature</artifactId>
@@ -64,6 +64,9 @@
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
+            <!-- v1.9 (issue #27)：compile→provided——拦截器主代码在用（容器提供实现），
+                 但不得以 compile 传递给 WebFlux 消费方（对齐 accesstoken 口径） -->
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
