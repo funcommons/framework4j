@@ -14,16 +14,35 @@ import org.slf4j.MDC;
  * <p>v2.1 优化：优先从 MDC 读 traceId（Micrometer 自动写入，比 Tracer.currentSpan() 快 3-5 倍）。
  * 网关透传场景可手动 {@link #setTraceId(String)} 覆盖。
  *
+ * <p>v1.8 (issue #25)：MDC key 可配置（{@code framework4j.api.trace.mdc-key}，默认 {@code traceId}），
+ * 由 {@code TraceIdMdcAutoConfiguration} 启动时注入；framework4j-tracelog 侧采集同步读
+ * {@link #getMdcKey()}，双 key 双写不再必要。
+ *
  * @since 1.0.0
  */
 public final class TraceContext {
 
-    /** MDC 中 traceId 的标准键名（Micrometer 默认） */
-    private static final String MDC_TRACE_ID_KEY = "traceId";
+    /** MDC 中 traceId 的标准键名（Micrometer 默认），可经 {@link #setMdcKey(String)} 覆盖 */
+    private static volatile String mdcTraceIdKey = "traceId";
 
     private static volatile Tracer tracer;
 
     private TraceContext() {}
+
+    /**
+     * 由 {@code TraceIdMdcAutoConfiguration} 注入配置的 MDC key（issue #25）。
+     * <p>framework4j-tracelog 的采集/拦截器侧经 {@link #getMdcKey()} 读取同一 key。
+     */
+    public static void setMdcKey(String key) {
+        if (key != null && !key.isBlank()) {
+            mdcTraceIdKey = key;
+        }
+    }
+
+    /** 当前生效的 MDC key（默认 {@code traceId}） */
+    public static String getMdcKey() {
+        return mdcTraceIdKey;
+    }
 
     /**
      * 由 {@link TraceConfig} 注入 Tracer 实例。
@@ -38,18 +57,19 @@ public final class TraceContext {
      */
     public static void setTraceId(String traceId) {
         if (traceId != null && !traceId.isBlank()) {
-            MDC.put(MDC_TRACE_ID_KEY, traceId);
+            MDC.put(mdcTraceIdKey, traceId);
         } else {
-            MDC.remove(MDC_TRACE_ID_KEY);
+            MDC.remove(mdcTraceIdKey);
         }
     }
 
     /**
-     * 清除 Tracer 引用 + MDC（测试场景用，避免上下文串扰）
+     * 清除 Tracer 引用 + MDC + MDC key 覆盖（测试场景用，避免上下文串扰）
      */
     public static void clear() {
         tracer = null;
-        MDC.remove(MDC_TRACE_ID_KEY);
+        mdcTraceIdKey = "traceId";
+        MDC.remove(mdcTraceIdKey);
     }
 
     /**
@@ -60,7 +80,7 @@ public final class TraceContext {
      */
     public static String getTraceId() {
         // 1. MDC 优先（ThreadLocal 直读，~10ns）
-        String mdcTraceId = MDC.get(MDC_TRACE_ID_KEY);
+        String mdcTraceId = MDC.get(mdcTraceIdKey);
         if (mdcTraceId != null && !mdcTraceId.isBlank()) {
             return mdcTraceId;
         }

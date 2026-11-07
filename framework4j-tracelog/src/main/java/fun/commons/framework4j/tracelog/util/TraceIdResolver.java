@@ -20,10 +20,11 @@ public final class TraceIdResolver {
 
     /**
      * 从 Logback ILoggingEvent 的 MDC 中解析并标准化 traceId。
+     * <p>v1.8 (issue #25)：MDC key 走 {@link TraceContext#getMdcKey()}（可配置，默认 traceId）。
      */
     public static String fromEvent(Map<String, String> mdc) {
         if (mdc == null) return null;
-        String raw = mdc.get("traceId");
+        String raw = mdc.get(TraceContext.getMdcKey());
         return TraceIdNormalizer.normalize(raw);
     }
 
@@ -33,6 +34,6 @@ public final class TraceIdResolver {
     public static String current() {
         String raw = TraceContext.getTraceId();
         if (raw != null) return TraceIdNormalizer.normalize(raw);
-        return TraceIdNormalizer.normalize(MDC.get("traceId"));
+        return TraceIdNormalizer.normalize(MDC.get(TraceContext.getMdcKey()));
     }
 }

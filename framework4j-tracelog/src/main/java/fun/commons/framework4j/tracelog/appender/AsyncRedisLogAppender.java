@@ -15,6 +15,7 @@ import fun.commons.framework4j.tracelog.store.LocalFallbackWriter;
 import fun.commons.framework4j.tracelog.store.TraceIdNormalizer;
 import fun.commons.framework4j.tracelog.store.TraceLogStore;
 import fun.commons.framework4j.tracelog.util.TenantKeyResolver;
+import fun.commons.framework4j.web.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import net.logstash.logback.encoder.LogstashEncoder;
 
@@ -173,10 +174,10 @@ public class AsyncRedisLogAppender extends AppenderBase<ILoggingEvent> {
 
     @Override
     protected void append(ILoggingEvent event) {
-        // 1. 解析 traceId
+        // 1. 解析 traceId（v1.8 issue #25：MDC key 可配置，经 TraceContext.getMdcKey() 同步）
         Map<String, String> mdc = event.getMDCPropertyMap();
         if (mdc == null) return;
-        String raw = mdc.get("traceId");
+        String raw = mdc.get(TraceContext.getMdcKey());
         if (raw == null) return;
 
         String traceId = TraceIdNormalizer.normalize(raw);

@@ -1,6 +1,7 @@
 package fun.commons.framework4j.tracelog.switcher;
 
 import fun.commons.framework4j.tracelog.config.TraceLogProperties;
+import fun.commons.framework4j.web.TraceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -78,8 +79,8 @@ public class TraceLogSwitchInterceptor implements HandlerInterceptor {
     private List<SwitchRule> matchRules(HttpServletRequest request) {
         List<SwitchRule> hits = new ArrayList<>();
 
-        // trace 维度
-        String traceId = MDC.get("traceId");
+        // trace 维度（v1.8 issue #25：MDC key 可配置，经 TraceContext.getMdcKey() 同步）
+        String traceId = MDC.get(TraceContext.getMdcKey());
         if (traceId != null) {
             SwitchRule r = cache.matchDimension("trace", traceId);
             if (r != null) hits.add(r);

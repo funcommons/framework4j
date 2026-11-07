@@ -55,6 +55,7 @@ framework4j:
   <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} [traceId=%X{traceId:-}] - %msg%n</pattern>
+    <!-- v1.8 起若自定义 framework4j.api.trace.mdc-key，此处占位符需同步改成 %X{你的key:-} -->
     </encoder>
   </appender>
   <root level="INFO">
@@ -120,6 +121,9 @@ curl -O http://host/api/logs/trace/abc123/export?format=json
 
 - 提权作用域受 `elevation.allowed-packages` 限制，防止误提权第三方包打爆日志。
 - `TraceIdNormalizer` 把 traceId 归一为 32-hex（OTel 格式），非标准 traceId 也能命中。
+  > v1.8 (issue #25) caveat：入站采纳的 trace id 若为非 hex 字符（如 base62），MDC/日志/响应头侧完整可用，
+  > 但 tracelog 存储侧归一化会置 null（采不到该 trace 的日志）。全链路统一用 tracelog 存储时，
+  > 建议上游生成 32-hex（或 UUID 去杠）格式的 trace id。
 
 ### 非目标（明确不做）
 

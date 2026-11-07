@@ -4,7 +4,6 @@ import fun.commons.framework4j.api.ApiCode;
 import fun.commons.framework4j.web.ApiError;
 import fun.commons.framework4j.web.ApiException;
 import fun.commons.framework4j.web.ApiResponse;
-import fun.commons.framework4j.web.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
