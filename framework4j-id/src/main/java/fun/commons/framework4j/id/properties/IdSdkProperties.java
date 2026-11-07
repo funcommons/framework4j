@@ -58,6 +58,16 @@ public class IdSdkProperties {
          */
         private String redisName = "stringRedisTemplate";
 
+        /**
+         * v1.8 (issue #26)：Redis 不可达时是否 fail-soft 降级为 IP Hash 模式。
+         * <p>
+         * true（默认）: Redis 连接失败 → WARN + 降级 IP Hash，保证应用可启动（无 Redis 的测试/CI 不再启动即炸）；
+         * 槽位耗尽 (0-1023 全占用) 仍会启动失败——降级会产生 worker id 碰撞。
+         * <p>
+         * false: 保持 1.7.x 语义，Redis 失败直接抛 IllegalStateException 阻断启动。
+         */
+        private boolean fallbackToIp = true;
+
         public String getStrategy() {
             return strategy;
         }
@@ -72,6 +82,14 @@ public class IdSdkProperties {
 
         public void setRedisName(String redisName) {
             this.redisName = redisName;
+        }
+
+        public boolean isFallbackToIp() {
+            return fallbackToIp;
+        }
+
+        public void setFallbackToIp(boolean fallbackToIp) {
+            this.fallbackToIp = fallbackToIp;
         }
     }
 

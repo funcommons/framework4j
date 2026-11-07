@@ -112,7 +112,9 @@ public class RedisWorkerIdStrategy implements WorkerIdStrategy, DisposableBean {
                         String.valueOf(LEASE_HOURS * 3600),
                         String.valueOf(MAX_WORKER_ID));
             } catch (Exception e) {
-                throw new IllegalStateException(
+                // v1.8 (issue #26)：改抛 WorkerIdRedisException（IllegalStateException 子类，向后兼容），
+                // 与槽位耗尽区分——连接类失败允许 FallbackWorkerIdStrategy 降级 IP Hash
+                throw new WorkerIdRedisException(
                         "[ID-SDK] Redis WorkerID 申请失败: " + e.getMessage(), e);
             }
 

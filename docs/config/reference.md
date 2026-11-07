@@ -94,6 +94,35 @@
 | `export.enabled` | `true` | 是否启用导出 |
 | `console.enabled` | `true` | 是否暴露控制台页面（`/tracelog/index.html`） |
 
+### framework4j.id
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 是否启用（v1.8 起显式启用，缺省不激活） |
+| `worker.strategy` | `redis` | WorkerID 策略：`redis`（租约）/ `ip`（IP Hash） |
+| `worker.fallback-to-ip` | `true` | Redis 不可达时降级 IP Hash（v1.8）；槽位耗尽仍启动失败 |
+| `worker.redis-name` | `stringRedisTemplate` | Redis Bean 名称 |
+| `mybatis.enabled` | `true` | 注册 MyBatis-Plus IdentifierGenerator（父开关开启后缺省跟随） |
+
+### framework4j.openid
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 是否启用（v1.8 起显式启用，缺省不激活） |
+| `request-body-deserializer` | `true` | @RequestBody 反序列化（enabled=true 时） |
+| `support-integer` | `false` | 受理 Integer/int |
+| `support-string` | `false` | 受理 String 标量 |
+| `accept-numeric-fallback` | `true` | 受理裸数字（false=strict，强制混淆串） |
+| `fail-fast` | `true` | 启动期扫描 @OpenId 误用（v1.8 起经 @Bean 条件真正生效） |
+
+### framework4j.api.trace
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `true` | trace_id MDC/响应头链路 |
+| `header-name` | `X-Trace-Id` | 入站采纳 + 响应回显的 header 名 |
+| `mdc-key` | `traceId` | MDC key（v1.8 起可配置，tracelog 侧同步生效） |
+
 ### framework4j.idempotency
 
 | 配置项 | 默认值 | 说明 |

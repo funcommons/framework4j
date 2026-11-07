@@ -11,7 +11,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `framework4j-api` | Unified `ApiCode` enum (error code contract shared by all modules) | — |
 | `framework4j-web` | `ApiResponse`/`ApiAssert`, `GlobalExceptionHandler` (all errors → HTTP 200 + business code), `TraceContext`, Jackson WebConfig (snake_case + Long→String) | `framework4j.web.enabled` + `framework4j.web.jackson.{snake-case,long-to-string,fail-on-unknown-properties}` |
 | `framework4j-datetime` | `OffsetDateTime` serializers + `TimeFormatInterceptor` + converters (split from core in v2.0) | `framework4j.datetime.enabled` |
-| `framework4j-id` | `SnowflakeDistributor` + `WorkerIdStrategy` (Redis-leased / IP-hash), `OpenID` obfuscation (12-char + checksum + TypeHandler + Swagger) (split from core in v2.0) | `framework4j.id.*`, `framework4j.openid.*` |
+| `framework4j-id` | `SnowflakeDistributor` + `WorkerIdStrategy` (Redis-leased / IP-hash + v1.8 `fallback-to-ip` fail-soft on connection failure), `OpenID` obfuscation (12-char + checksum + TypeHandler + Swagger) (split from core in v2.0). **v1.8 (issue #26): `framework4j.id.enabled` / `framework4j.openid.enabled` are opt-in (`matchIfMissing=false`)**; real key is `framework4j.id.worker.strategy` (redis\|ip) — docs saying `worker-id-strategy`/`ip-hash` are wrong; slot exhaustion never degrades (collision risk), only connection failures do | `framework4j.id.*`, `framework4j.openid.*` |
 | `framework4j-sql-tracing` | `TraceIdDruidFilter` + `DefaultTraceIdProvider` + 3 modes (DISABLED/WRITE_ONLY/ALL) (split from datasource in v2.0) | `framework4j.datasource.sql-tracing.*` |
 | `framework4j-redis` | Multi-Redis data source manager (`MultiRedisManager`), per-data-source Lettuce + Redisson, `@RedisOn("name")` annotation processor (class- or field-level), Jackson serializer | `framework4j.redis.*` |
 | `framework4j-datasource` | Multi-DataSource on top of Druid + MyBatis-Plus, `@DataSourceOn("name")` annotation processor | `framework4j.datasource.*` |
@@ -76,7 +76,7 @@ If Redis is unavailable, prefer `mvn -pl framework4j-api test` — `application-
 
 ### Auto-configuration pattern
 
-Every module registers its configuration class via `src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. Each starter is gated by an `framework4j.<feature>.enabled` property (default `true` for core, **opt-in `true`** for redis/datasource/access-token). To disable a module without removing the dependency, set the property to `false`.
+Every module registers its configuration class via `src/main/resources/META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`. Each starter is gated by an `framework4j.<feature>.enabled` property (default `true` for core; **opt-in `true`** for redis/datasource/access-token; **opt-in `true` for id/openid since v1.8** — issue #26, classpath presence no longer activates them). To disable a module without removing the dependency, set the property to `false`.
 
 ### `@RedisOn` / `@DataSourceOn` runtime injection
 

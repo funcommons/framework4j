@@ -24,8 +24,7 @@ framework4j:
     mybatis:
       enabled: false
   openid:
-    fastjson2:
-      enabled: true
+    enabled: true
 
 logging:
   level:

@@ -33,6 +33,6 @@ open framework4j-demo/src/main/resources/static/config-tool.html
 | 审计 | 3 | hash-chain/algorithm |
 | 脱敏 | 2 | encryption-key |
 | 幂等 | 2 | ttl |
-| 分布式 ID | 2 | worker-id-strategy |
+| 分布式 ID | 3 | enabled/worker.strategy/fallback-to-ip |
 | 时间处理 | 1 | enabled |
 | SQL 追踪 | 2 | mode |

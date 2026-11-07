@@ -33,6 +33,11 @@ import java.io.IOException;
  *       子开关 {@code framework4j.openid.request-body-deserializer}（默认 true）</li>
  *   <li>{@link OpenIdFormatterFactory}：@OpenId 入参 String → Long 还原</li>
  * </ul>
+ * <p>
+ * v1.8 (issue #26)：激活改为<strong>显式启用</strong>（{@code framework4j.openid.enabled=true}，缺省不激活）
+ * ——1.7.x 缺省开会让未使用 @OpenId 的应用也注册 4 个 bean（含一个全 ObjectMapper 的 BeanPostProcessor）。
+ * 子开关 {@code framework4j.openid.request-body-deserializer} / {@code framework4j.openid.fail-fast}
+ * 仍为缺省开（父开关显式开启后子行为默认跟随）。
  *
  * @since 2.0.0（从 framework4j-core 拆分为独立模块）
  */
@@ -43,7 +48,7 @@ import java.io.IOException;
         prefix = "framework4j.openid",
         name = "enabled",
         havingValue = "true",
-        matchIfMissing = true
+        matchIfMissing = false
 )
 public class OpenIdAutoConfiguration {
 
@@ -125,8 +130,16 @@ public class OpenIdAutoConfiguration {
     /**
      * v2.2：启动期 fail-fast 校验，把 silent failure 变成 loud startup failure。
      * v1.3：追加 @RequestBody 字段误用扫描(@OpenId 标在未受理类型上)，需 {@link OpenIdTypeSupport}。
+     * <p>
+     * v1.8 (issue #26 顺带修复)：{@code @ConditionalOnClass}/{@code @ConditionalOnProperty(fail-fast)}
+     * 原先标在 {@link OpenIdFailFastValidator} <b>类</b>上——经 @Bean 方法注册时 Spring 不解析返回类型上的条件，
+     * 条件形同虚设。现移到 @Bean 方法上，{@code framework4j.openid.fail-fast=false} 与非 Web 环境
+     * （无 HandlerMethod）真正生效。
      */
     @Bean
+    @ConditionalOnClass(org.springframework.web.method.HandlerMethod.class)
+    @ConditionalOnProperty(prefix = "framework4j.openid", name = "fail-fast",
+            havingValue = "true", matchIfMissing = true)
     public fun.commons.framework4j.openid.web.OpenIdFailFastValidator framework4jOpenIdFailFastValidator(
             org.springframework.context.ApplicationContext applicationContext, Environment environment) {
         return new fun.commons.framework4j.openid.web.OpenIdFailFastValidator(

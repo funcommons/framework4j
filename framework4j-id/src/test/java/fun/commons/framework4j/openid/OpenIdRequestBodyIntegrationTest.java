@@ -42,6 +42,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * @OpenId Integer/String 控制器,全开后这些字段合法、fail-fast 不误报,同时覆盖三开关全开的容器行为。
  */
 @SpringBootTest(classes = OpenIdRequestBodyIntegrationTest.TestApp.class, properties = {
+        // v1.8 (issue #26)：openid 激活改显式启用（matchIfMissing=false），测试需显式开启
+        "framework4j.openid.enabled=true",
         "framework4j.openid.support-integer=true",
         "framework4j.openid.support-string=true"
 })

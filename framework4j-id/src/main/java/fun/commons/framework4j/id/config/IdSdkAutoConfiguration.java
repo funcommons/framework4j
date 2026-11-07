@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.incrementer.IdentifierGenerator;
 import fun.commons.framework4j.id.generator.MpIdGenerator;
 import fun.commons.framework4j.id.generator.SnowflakeDistributor;
 import fun.commons.framework4j.id.properties.IdSdkProperties;
+import fun.commons.framework4j.id.strategy.FallbackWorkerIdStrategy;
 import fun.commons.framework4j.id.strategy.IpHashWorkerIdStrategy;
 import fun.commons.framework4j.id.strategy.RedisWorkerIdStrategy;
 import fun.commons.framework4j.id.strategy.WorkerIdStrategy;
@@ -28,13 +29,19 @@ import org.springframework.data.redis.core.StringRedisTemplate;
  *   <li>自动配置 SnowflakeDistributor</li>
  *   <li>自动注册 MyBatis-Plus IdentifierGenerator</li>
  * </ul>
+ * <p>
+ * v1.8 (issue #26)：激活改为<strong>显式启用</strong>（{@code framework4j.id.enabled=true}，缺省不激活）——
+ * 与 Spring Cloud 家族惯例一致。1.7.x 的「classpath 即激活」会让无 Redis 的测试/CI 上下文在
+ * Bean 构造期抢 Redis 租约时启动即炸，消费方被迫逐个测试资源显式关闭。
+ * <p>
+ * 注意：子开关 {@code framework4j.id.mybatis.enabled} 保持缺省 true——父开关显式开启后子行为默认跟随。
  *
  * @since 1.0.0
  */
 @Slf4j
 @AutoConfiguration
 @EnableConfigurationProperties(IdSdkProperties.class)
-@ConditionalOnProperty(name = "framework4j.id.enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(name = "framework4j.id.enabled", havingValue = "true", matchIfMissing = false)
 public class IdSdkAutoConfiguration {
 
     @Value("${spring.application.name:}")
@@ -44,8 +51,11 @@ public class IdSdkAutoConfiguration {
      * 自动配置 WorkerID 策略
      * <p>
      * v2.1 修复：原 default-app 兜底会让多服务争抢同一 Redis 租约坑位。改为缺失时抛 IllegalStateException。
+     * <p>
+     * v1.8 (issue #26)：redis 策略默认外包 {@link FallbackWorkerIdStrategy}——Redis 不可达时
+     * fail-soft 降级 IP Hash（{@code framework4j.id.worker.fallback-to-ip=false} 恢复 1.7.x 启动失败语义）。
      *
-     * 根据 idsdk.worker.strategy 配置选择策略:
+     * 根据 framework4j.id.worker.strategy 配置选择策略:
      * - redis: Redis 租约模式
      * - ip: IP Hash 模式
      */
@@ -78,6 +88,10 @@ public class IdSdkAutoConfiguration {
         try {
             StringRedisTemplate redisTemplate = applicationContext.getBean(redisBeanName, StringRedisTemplate.class);
             RedisWorkerIdStrategy workerIdStrategy = new RedisWorkerIdStrategy(redisTemplate, appName);
+            if (properties.getWorker().isFallbackToIp()) {
+                log.info("【ID-SDK】workerIdStrategy，WorkerID分配策略=Redis租约模式（fail-soft降级IP），redisBean={}", redisBeanName);
+                return new FallbackWorkerIdStrategy(workerIdStrategy, new IpHashWorkerIdStrategy());
+            }
             log.info("【ID-SDK】workerIdStrategy，WorkerID分配策略=Redis租约模式，redisBean={}", redisBeanName);
             return workerIdStrategy;
         } catch (NoSuchBeanDefinitionException e) {
