@@ -87,6 +87,17 @@ public class RefreshTokenService {
     private final AccessTokenGenerator accessGenerator;
     private final String appName;
 
+    /**
+     * v1.8 (issue #23 残留缺口)：签发/轮转 access token 时是否把业务 claims 嵌入 JWT payload
+     * （嵌套 {@code payload.claims} 键，与 {@link AccessTokenGenerator#generateToken(String, Map, boolean)}
+     * 三参语义一致）。
+     * <p>默认 {@code false} = 1.7.x 行为（payload 不含 claims）。此前缺口：即使登录时 embed=true，
+     * {@link #generateTokenPair} / {@link #refreshAccessToken} 走双参签发——首次轮转后
+     * 新 access token 的 payload claims 即丢失，前端「自助判身份域」失效。
+     * <p>装配方（如 framework4j-tenant 的 auth.embed-claims=true）经 {@link #setEmbedInPayload(boolean)} 开启。
+     */
+    private volatile boolean embedInPayload = false;
+
     public RefreshTokenService(AccessTokenProperties properties,
                                StringRedisTemplate redisTemplate,
                                AccessTokenGenerator accessGenerator,
@@ -95,6 +106,14 @@ public class RefreshTokenService {
         this.redisTemplate = redisTemplate;
         this.accessGenerator = accessGenerator;
         this.appName = appName;
+    }
+
+    public boolean isEmbedInPayload() {
+        return embedInPayload;
+    }
+
+    public void setEmbedInPayload(boolean embedInPayload) {
+        this.embedInPayload = embedInPayload;
     }
 
     /**
@@ -106,7 +125,8 @@ public class RefreshTokenService {
         }
 
         // 1. 复用 access token 路径，拿 access token + 写入 access 元数据
-        String accessToken = accessGenerator.generateToken(extractTokenType(claims), claims);
+        // v1.8 (issue #23)：embedInPayload=true 时 claims 嵌入 payload，轮转后不再丢失
+        String accessToken = accessGenerator.generateToken(extractTokenType(claims), claims, embedInPayload);
 
         Map<String, Object> accessPayload = TokenUtils.parseToken(accessToken, properties.getSecretKey());
         String accessJti = (String) accessPayload.get("jti");
@@ -227,7 +247,8 @@ public class RefreshTokenService {
         long refreshExp = now + refreshTtl * 1000;
 
         String newRefreshJti = UUID.randomUUID().toString();
-        String newAccessToken = accessGenerator.generateToken(originalType, originalClaims);
+        // v1.8 (issue #23)：轮转签发同样嵌入 payload claims，保持全家族一致
+        String newAccessToken = accessGenerator.generateToken(originalType, originalClaims, embedInPayload);
         Map<String, Object> newAccessPayload = TokenUtils.parseToken(newAccessToken, properties.getSecretKey());
         String newAccessJti = (String) newAccessPayload.get("jti");
 

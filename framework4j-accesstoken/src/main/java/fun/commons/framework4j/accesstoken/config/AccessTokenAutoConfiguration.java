@@ -90,7 +90,10 @@ public class AccessTokenAutoConfiguration {
             AccessTokenGenerator generator,
             StringRedisTemplate accessTokenStringRedisTemplate) {
         RefreshTokenService service = new RefreshTokenService(properties, accessTokenStringRedisTemplate, generator, appName);
-        log.info("【AccessToken】refreshTokenService，Refresh token family 管理器，appName={}", appName);
+        // v1.8 (issue #23 补全)：refresh 链路签发/轮转是否嵌入 payload claims
+        service.setEmbedInPayload(properties.isEmbedClaims());
+        log.info("【AccessToken】refreshTokenService，Refresh token family 管理器，appName={}，embedClaims={}",
+                appName, properties.isEmbedClaims());
         return service;
     }
 

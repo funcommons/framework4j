@@ -60,6 +60,17 @@ public class AccessTokenProperties {
      */
     private Map<String, Policy> policies;
 
+    /**
+     * v1.8 (issue #23 补全)：refresh 链路（{@code RefreshTokenService#generateTokenPair} 签发与
+     * {@code #refreshAccessToken} 轮转）是否把业务 claims 嵌入 access token 的 JWT payload
+     * （嵌套 {@code payload.claims} 键，不拍平、不覆盖系统字段）。
+     * <p>默认 {@code false} = 1.7.x 行为（payload 不含 claims）。此前缺口：登录签发即使嵌入，
+     * 首次轮转后新 access token 的 payload claims 即丢失。
+     * <p>tenant 模块无 refresh 流，其签发开关为独立的 {@code framework4j.tenant.auth.embed-claims}。
+     * 校验链路不受影响：服务端仍只信 Redis 会话 claims（可撤销/可热更）。
+     */
+    private boolean embedClaims = false;
+
     @Getter
     @Setter
     public static class Policy {
