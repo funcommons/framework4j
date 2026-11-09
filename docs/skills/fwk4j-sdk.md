@@ -1,5 +1,16 @@
-
 # framework4j SDK（统一技能 · 单源 · 按需加载）
+
+> [!TIP] 安装本 Skill（AI 编码工具接入）
+>
+> 把下面的提示词发给你的 AI 编码工具（Claude Code / Cursor / Cline 等）即可安装：
+>
+> ```text
+> 下载并安装 SKILL 到项目中 https://funcommons.github.io/framework4j/skills/fwk4j-skill.zip
+> ```
+>
+> 或手动下载 [fwk4j-skill.zip](/skills/fwk4j-skill.zip)，解压到工具的技能目录
+> （Claude Code：`~/.claude/skills/` 或项目 `.claude/skills/`），目录名保持 `framework4j`。
+
 
 Spring Boot 3.5 / Java 17 企业 SDK，16 个独立 starter + 可选租户模块。
 本文件是**唯一常驻入口**；模块细节在 `references/`，**命中场景时才读取对应文件，禁止一次性全读**。

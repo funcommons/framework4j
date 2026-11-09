@@ -99,11 +99,30 @@ if (existsSync(unifiedSkillDir)) {
   console.log('\n📝 Step 1b: skills/framework4j → docs/skills/ 镜像同步');
 
   // SKILL.md → docs/skills/fwk4j-sdk.md（去 frontmatter，站点正文）
+  // 站点专属：H1 后注入「安装本 Skill」横幅（仅页面，不回写 SKILL.md 单源）
   const skillEntry = join(unifiedSkillDir, 'SKILL.md');
   if (existsSync(skillEntry)) {
-    const body = readFileSync(skillEntry, 'utf-8').replace(/^---[\s\S]*?---\n/, '');
-    writeFileSync(join(docsSkillsDir, 'fwk4j-sdk.md'), body);
-    console.log('  ✅ fwk4j-sdk.md (SKILL.md)');
+    const body = readFileSync(skillEntry, 'utf-8')
+      .replace(/^---[\s\S]*?---\n/, '')
+      .trimStart(); // frontmatter 剥离后残留的前导空行会让 H1 锚定失败
+    const installBanner = [
+      '',
+      '> [!TIP] 安装本 Skill（AI 编码工具接入）',
+      '>',
+      '> 把下面的提示词发给你的 AI 编码工具（Claude Code / Cursor / Cline 等）即可安装：',
+      '>',
+      '> ```text',
+      '> 下载并安装 SKILL 到项目中 https://funcommons.github.io/framework4j/skills/fwk4j-skill.zip',
+      '> ```',
+      '>',
+      '> 或手动下载 [fwk4j-skill.zip](/skills/fwk4j-skill.zip)，解压到工具的技能目录',
+      '> （Claude Code：`~/.claude/skills/` 或项目 `.claude/skills/`），目录名保持 `framework4j`。',
+      '',
+    ].join('\n');
+    // H1 之后插入（首位）
+    const withBanner = body.replace(/^(# [^\n]*\n)/, `$1${installBanner}\n`);
+    writeFileSync(join(docsSkillsDir, 'fwk4j-sdk.md'), withBanner);
+    console.log('  ✅ fwk4j-sdk.md (SKILL.md + 安装横幅)');
   }
 
   // references/<module>.md → docs/skills/fwk4j-<module>.md
@@ -141,6 +160,22 @@ try {
 if (!existsSync(distDir)) {
   console.error('❌ VitePress build 失败：dist/ 目录不存在');
   process.exit(1);
+}
+
+// === Step 2b: 打包 skill zip → dist/skills/fwk4j-skill.zip ===
+// 稳定下载 URL（不带版本号，随 main 构建更新）；带版本号的发布件走 GitHub Release assets。
+// 页面横幅与安装提示词（Step 1b 注入）指向此路径。
+if (existsSync(unifiedSkillDir)) {
+  const zipDestDir = join(distDir, 'skills');
+  mkdirSync(zipDestDir, { recursive: true });
+  const zipDest = join(zipDestDir, 'fwk4j-skill.zip');
+  try {
+    execSync(`zip -rqy "${zipDest}" framework4j -x "*.DS_Store"`, { cwd: join(root, 'skills'), stdio: 'pipe' });
+    console.log('\n📦 Step 2b: fwk4j-skill.zip 已打包 → dist/skills/（站点稳定下载 URL：/skills/fwk4j-skill.zip）');
+  } catch (e) {
+    console.error('  ❌ skill zip 打包失败（需要 zip 命令）:', e.stderr?.toString() || e.message);
+    process.exit(1);
+  }
 }
 
 // === Step 3: 复制 dist → demo 静态资源（--skip-demo 时跳过）===
