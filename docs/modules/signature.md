@@ -31,7 +31,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-signature</artifactId>
-    <version>1.2.8</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 

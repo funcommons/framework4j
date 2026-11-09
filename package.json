@@ -4,6 +4,7 @@
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
+    "docs:build:pages": "node scripts/build-docs.mjs --base=/framework4j/ --skip-demo",
     "docs:deploy": "node scripts/build-docs.mjs"
   },
   "devDependencies": {

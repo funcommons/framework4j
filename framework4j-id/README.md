@@ -31,12 +31,14 @@
 ```yaml
 framework4j:
   id:
-    enabled: true
-    worker-id-strategy: redis  # 或 ip-hash（无 Redis 时用）
+    enabled: true              # v1.8 起显式启用（缺省不激活，issue #26）
+    worker:
+      strategy: redis          # redis（租约）/ ip（无 Redis 时用；注意是 ip 不是 ip-hash）
+      fallback-to-ip: true     # Redis 不可达时降级 IP Hash（默认 true，槽位耗尽仍失败）
     mybatis:
-      enabled: true  # 自动注册 IdentifierGenerator
+      enabled: true  # 自动注册 IdentifierGenerator（父开关开启后缺省跟随）
   openid:
-    enabled: true
+    enabled: true              # v1.8 起显式启用（缺省不激活）
     salt: "${OPENID_SALT}"  # 必填，环境变量注入
 ```
 
@@ -69,18 +71,21 @@ public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
 
 | 属性 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `framework4j.id.enabled` | `boolean` | `true` | 是否启用 |
-| `framework4j.id.worker-id-strategy` | `String` | `redis` | `redis`（租约）/ `ip-hash`（无 Redis 兜底） |
-| `framework4j.id.epoch` | `long` | `1704067200000`（2024-01-01 UTC+8） | 雪花纪元 |
-| `framework4j.id.mybatis.enabled` | `boolean` | `true` | 自动注册 MyBatis Plus `IdentifierGenerator` |
-| `framework4j.id.redis.lease-seconds` | `int` | `30` | WorkerId 租约时长 |
-| `framework4j.id.redis.renew-interval` | `int` | `10` | 续约间隔 |
+| `framework4j.id.enabled` | `boolean` | `false`（缺省不激活） | v1.8 起显式启用（issue #26） |
+| `framework4j.id.worker.strategy` | `String` | `redis` | `redis`（租约）/ `ip`（无 Redis 兜底） |
+| `framework4j.id.worker.fallback-to-ip` | `boolean` | `true` | v1.8：Redis 不可达时降级 IP Hash；槽位耗尽仍失败 |
+| `framework4j.id.worker.redis-name` | `String` | `stringRedisTemplate` | 多源 Redis 时指定 |
+| `framework4j.id.mybatis.enabled` | `boolean` | `true` | 自动注册 MyBatis Plus `IdentifierGenerator`（父开关开启后缺省跟随） |
+
+> 雪花纪元硬编码 `2024-01-01 UTC+8`（不可配）；租约 24h、心跳 6h（内置常量）。历史上文档出现过的
+> `framework4j.id.epoch` / `framework4j.id.redis.lease-seconds` / `framework4j.id.redis.renew-interval`
+> / `worker-id-strategy` 均为不存在的键（issue #26 勘误）。
 
 ### `framework4j.openid.*`
 
 | 属性 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `framework4j.openid.enabled` | `boolean` | `true` | 是否启用 |
+| `framework4j.openid.enabled` | `boolean` | `false`（缺省不激活） | v1.8 起显式启用（issue #26）；关闭后 `@OpenId` 字段按普通 Long 序列化（走 web 的 Long→String） |
 | `framework4j.openid.salt` | `String` | 必填 | HMAC 盐值，环境变量注入 |
 | `framework4j.openid.length` | `int` | `12` | 输出字符长度（11 数据 + 1 校验位） |
 | `framework4j.openid.alphabet` | `String` | `0123456789ABCDEFGHJKMNPQRSTVWXYZ` | 字符表（去除易混字符） |
@@ -107,8 +112,7 @@ public class SnowflakeDistributor {
 
 ```java
 public interface WorkerIdStrategy {
-    long getWorkerId();        // 0 ~ 1023
-    void renew();              // 续约（Redis 模式）
+    long getWorkerId();        // 0 ~ 1023（Redis 租约模式下首次调用抢租约，续约由内置心跳托管）
 }
 ```
 
@@ -214,10 +218,10 @@ public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
 ```yaml
 framework4j:
   id:
-    worker-id-strategy: redis
-    redis:
-      lease-seconds: 30
-      renew-interval: 10
+    enabled: true
+    worker:
+      strategy: redis          # 租约 24h / 心跳 6h（内置常量，无需配置）
+      fallback-to-ip: true     # Redis 故障时降级，保可用性
 ```
 
 10 个实例同时启动，每个租约到不同的 `workerId`（0-9），保证 ID 不冲突。

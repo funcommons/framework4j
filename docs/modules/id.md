@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-id</artifactId>
-    <version>1.2.8</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 
@@ -77,15 +77,15 @@ public ApiResponse<UserVO> getUser(@PathVariable("open_id") String openId) {
 | `framework4j.id.worker.redis-name` | `String` | `stringRedisTemplate` | 多源 Redis 时指定 |
 | `framework4j.id.mybatis.enabled` | `boolean` | `true` | 自动注册 MyBatis Plus `IdentifierGenerator`（父开关开启后缺省跟随） |
 
-> 雪花纪元硬编码 `2024-01-01 UTC+8`（不可配）；租约 24h、心跳 6h（常量，不可配）。历史上文档出现过的
-> `framework4j.id.epoch` / `framework4j.id.redis.lease-seconds` / `framework4j.id.redis.renew-interval`
-> / `worker-id-strategy` 均为不存在的键（issue #26 勘误）。
+&gt; 雪花纪元硬编码 `2024-01-01 UTC+8`（不可配）；租约 24h、心跳 6h（内置常量）。历史上文档出现过的
+&gt; `framework4j.id.epoch` / `framework4j.id.redis.lease-seconds` / `framework4j.id.redis.renew-interval`
+&gt; / `worker-id-strategy` 均为不存在的键（issue #26 勘误）。
 
 ### `framework4j.openid.*`
 
 | 属性 | 类型 | 默认 | 说明 |
 |---|---|---|---|
-| `framework4j.openid.enabled` | `boolean` | `true` | 是否启用 |
+| `framework4j.openid.enabled` | `boolean` | `false`（缺省不激活） | v1.8 起显式启用（issue #26）；关闭后 `@OpenId` 字段按普通 Long 序列化（走 web 的 Long→String） |
 | `framework4j.openid.salt` | `String` | 必填 | HMAC 盐值，环境变量注入 |
 | `framework4j.openid.length` | `int` | `12` | 输出字符长度（11 数据 + 1 校验位） |
 | `framework4j.openid.alphabet` | `String` | `0123456789ABCDEFGHJKMNPQRSTVWXYZ` | 字符表（去除易混字符） |
@@ -112,8 +112,7 @@ public class SnowflakeDistributor {
 
 ```java
 public interface WorkerIdStrategy {
-    long getWorkerId();        // 0 ~ 1023
-    void renew();              // 续约（Redis 模式）
+    long getWorkerId();        // 0 ~ 1023（Redis 租约模式下首次调用抢租约，续约由内置心跳托管）
 }
 ```
 

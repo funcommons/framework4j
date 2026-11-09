@@ -8,7 +8,7 @@
 |---|---|
 | 职责 | `IdempotencyInterceptor`（拦截写操作）/ `IdempotencyProperties`（配置）/ SHA-256 请求体哈希 / Redis 原子 SETNX 防重放 |
 | 配置前缀 | `framework4j.idempotency.*` |
-| 必需依赖 | `framework4j-redis`、`framework4j-api`、`spring-boot-starter-web`、`jackson-databind` |
+| 必需依赖 | `framework4j-redis`、`framework4j-api`、`jackson-databind`；`spring-boot-starter-web` 为 **optional**（v1.9 起，issue #27——仅 servlet web 应用需要，WebFlux/非 web 消费方装配静默跳过） |
 | 可选依赖 | — |
 | 在 SDK 中的位置 | 安全层，独立于 `accesstoken`，可单独引入 |
 
@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-idempotency</artifactId>
-    <version>1.2.8</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 

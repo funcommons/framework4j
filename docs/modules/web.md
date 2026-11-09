@@ -19,6 +19,10 @@
 | `TraceContext` | trace_id 读写（MDC + Micrometer Tracer 兜底） |
 | `GlobalExceptionHandler` | `@RestControllerAdvice` 全局异常处理（业务异常 HTTP 200 / 系统异常 HTTP 500） |
 | `CachedBodyRequestWrapper` | **解决 Spring `ContentCachingRequestWrapper` 不重放 InputStream 的隐藏 bug**（共用资产，供 signature / idempotency 模块使用） |
+| `traceIdMdcFilter` | v1.8 trace_id 链路（issue #25）：入站 `X-Trace-Id` 合法即采纳（16~64 位白名单 sanitize）→ chain 前回显响应头（异常/提前提交路径也带）→ MDC 写入，请求结束清理 |
+
+&gt; trace 链路配置：`framework4j.api.trace.{enabled,header-name,mdc-key}`（默认 true / `X-Trace-Id` / `traceId`）。
+&gt; MDC key 可配置后 framework4j-tracelog 采集侧同步生效；Micrometer Tracing 已写 MDC 时不覆盖不清理。
 
 ## 快速开始
 
@@ -28,7 +32,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-web</artifactId>
-    <version>1.2.8</version>
+    <version>1.9.0</version>
 </dependency>
 ```
 
@@ -139,24 +143,6 @@ framework4j:
 | `data` | T | 业务数据；**失败时必须 null**（10700 部分成功例外） |
 | `error` | List&lt;ApiError&gt; | 字段级错误明细（参数校验场景） |
 | `trace_id` | string | 链路追踪 ID（双通道：body + `X-Trace-Id` Header） |
-
-### trace_id 链路契约（v1.8 对齐 mc-monitor，issue #25）
-
-`traceIdMdcFilter`（最高优先级，`/*`）按顺序处理：
-
-1. **入站采纳**：上游/网关传入的 `X-Trace-Id` 经 sanitize（trim 后 16~64 位、字符白名单 `[A-Za-z0-9._-]`）合法即采纳，跨服务链路不断裂；非法/缺失才本地生成 UUID
-2. **响应头回显**：`chain.doFilter` 之前回写 `X-Trace-Id` 响应头——controller 提前提交响应、抛异常路径也带
-3. **MDC key 可配置**：`framework4j.api.trace.mdc-key`（默认 `traceId`），tracelog 采集侧同步生效；header 名经 `framework4j.api.trace.header-name` 配置
-4. Micrometer Tracing 已写入 MDC 时不覆盖、不清理（生命周期归 Tracing），仅补响应头回显
-
-```yaml
-framework4j:
-  api:
-    trace:
-      enabled: true          # 默认开
-      header-name: X-Trace-Id
-      mdc-key: traceId       # 与消费方监控契约 key 对齐，改这里即可
-```
 | `timestamp` | long | 响应时间戳（毫秒） |
 
 ## IAE 异常分流（v2.2 修复 GitHub Issue #1）

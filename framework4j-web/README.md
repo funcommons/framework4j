@@ -19,6 +19,10 @@
 | `TraceContext` | trace_id 读写（MDC + Micrometer Tracer 兜底） |
 | `GlobalExceptionHandler` | `@RestControllerAdvice` 全局异常处理（业务异常 HTTP 200 / 系统异常 HTTP 500） |
 | `CachedBodyRequestWrapper` | **解决 Spring `ContentCachingRequestWrapper` 不重放 InputStream 的隐藏 bug**（共用资产，供 signature / idempotency 模块使用） |
+| `traceIdMdcFilter` | v1.8 trace_id 链路（issue #25）：入站 `X-Trace-Id` 合法即采纳（16~64 位白名单 sanitize）→ chain 前回显响应头（异常/提前提交路径也带）→ MDC 写入，请求结束清理 |
+
+> trace 链路配置：`framework4j.api.trace.{enabled,header-name,mdc-key}`（默认 true / `X-Trace-Id` / `traceId`）。
+> MDC key 可配置后 framework4j-tracelog 采集侧同步生效；Micrometer Tracing 已写 MDC 时不覆盖不清理。
 
 ## 快速开始
 

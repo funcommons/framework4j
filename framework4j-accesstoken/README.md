@@ -149,7 +149,8 @@ generator.generateToken("WEB", claims);
 - 校验失败返回 `10300 FORBIDDEN`（区别于 `10200` 未认证：token 有效但角色不足）；
 - **fail-closed**：声明了角色要求但令牌未携带 `roles` claim 时拒绝——升级后新加角色校验的端点对存量老 token 返回 403，用户重登或业务侧 `updateClaims` 后恢复；
 - `roles` / `anyRole` 均为空（默认）时不做角色校验，存量注解行为不变；
-- `type = "refresh"` 的端点仅做 family 状态校验，不做角色校验。
+- `type = "refresh"` 的端点仅做 family 状态校验，不做角色校验；
+- **token 自包含**（v1.7.0 起三参 `generateToken` / v1.8 起 `framework4j.access-token.embed-claims`，默认 false）：业务 claims 以嵌套 `payload.claims` 键嵌入 JWT payload，签发与 refresh 轮转全程一致——持有方解码 payload 即可自助判身份，服务端信任源仍是 Redis 会话（可撤销/热更）。tenant 模块对应开关为 `framework4j.tenant.auth.embed-claims`（默认 true）。
 
 ### `AccessTokenGenerator`
 
