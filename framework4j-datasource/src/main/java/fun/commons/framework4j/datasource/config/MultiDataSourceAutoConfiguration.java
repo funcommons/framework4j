@@ -21,6 +21,7 @@ import org.springframework.beans.factory.support.BeanDefinitionBuilder;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.RootBeanDefinition;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.AutoConfigureBefore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -48,19 +49,36 @@ import java.util.*;
  * <p>
  * 适配 Spring Boot 3.2.0 / Spring Framework 6.1.1 标准写法
  * [DEBUG 版本 2.0.7] 移除 factoryBeanObjectType 手动设置，使用纯净 RootBeanDefinition 交由 Spring 自动推断
+ * <p>
+ * v1.10 (issue #29-1)：显式声明处理顺序先于 Boot {@code DataSourceAutoConfiguration} 与
+ * Druid starter 的 {@code DruidDataSourceAutoConfigure}。此前框架五件套（DataSource 等）
+ * 由 {@link MultiDataSourceRegistrar} 在 Boot 装配<strong>之后</strong>注册，
+ * Boot 的 {@code @ConditionalOnMissingBean(DataSource)} 挡不住已先建好的 Hikari
+ * （未配 spring.datasource.url 时启动即炸），消费方被迫双 exclude。
+ * 顺序前置后：框架 datasources 配置存在 → 五件套先注册 → Boot/Druid 装配让位，无需 exclude；
+ * datasources 为空 → registrar 短路，Boot 默认装配不受影响。
  *
  * @since 2.0.7
  */
 @Slf4j
 @AutoConfiguration
+@AutoConfigureBefore(name = {
+        "org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration",
+        "com.alibaba.druid.spring.boot3.autoconfigure.DruidDataSourceAutoConfigure"
+})
 @ConditionalOnClass({DruidDataSource.class, MybatisSqlSessionFactoryBean.class})
 @ConditionalOnProperty(prefix = "framework4j.datasource", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(MultiDataSourceAutoConfiguration.MultiDataSourcePropertiesContainer.class)
 @Import({MultiDataSourceAutoConfiguration.MultiDataSourceRegistrar.class})
 public class MultiDataSourceAutoConfiguration {
 
+    /**
+     * v1.10 (issue #29-3)：改 static @Bean——非静态 @Bean 方法返回 BeanPostProcessor 会触发
+     * BPPChecker「not eligible for auto-proxying」WARN（配置类尚未代理完成即需实例化 BPP），
+     * 功能无损但噪音大；static 后 Spring 无需提前实例化配置类。
+     */
     @Bean
-    public DataSourceOnBeanPostProcessor dataSourceOnBeanPostProcessor(MultiDataSourceManager manager) {
+    public static DataSourceOnBeanPostProcessor dataSourceOnBeanPostProcessor(MultiDataSourceManager manager) {
         DataSourceOnBeanPostProcessor processor = new DataSourceOnBeanPostProcessor(manager);
         log.info("【Multi-DataSource】dataSourceOnBeanPostProcessor，@DataSourceOn注解处理器，支持类级别和字段级别的数据源自动注入");
         return processor;
@@ -432,6 +450,14 @@ public class MultiDataSourceAutoConfiguration {
                     pvs.add("configLocation", mybatis.getConfigLocation());
                 }
             }
+
+            // v1.10 (issue #29-2 功能修复)：把 MybatisPlusInterceptor（框架方案 C 缺省注册的分页/
+            // 防全表更新/乐观锁/多租户，或用户自定义同名类型 bean）按类型 wire 进工厂——
+            // 此前 plugins 属性从未设置，方案 C 注册的拦截器 bean 是"惰性 bean"，分页从未真正生效。
+            // 按类型引用：用户自定义 MybatisPlusInterceptor 时 @ConditionalOnMissingBean 让位、
+            // 此处自动引用用户的 bean，定制拦截器无需迁移即生效。
+            pvs.add("plugins",
+                    new RuntimeBeanReference(com.baomidou.mybatisplus.extension.plugins.MybatisPlusInterceptor.class));
 
             // 【移除】不再手动设置 factoryBeanObjectType
             // beanDef.setAttribute(FactoryBean.OBJECT_TYPE_ATTRIBUTE, ResolvableType.forClass(SqlSessionFactory.class));

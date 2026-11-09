@@ -14,7 +14,7 @@ description: >
   Snowflake、雪花、OpenID、@OpenId、混淆、分布式 ID、@RedisOn、@DataSourceOn、多数据源、
   租户、tenant、X-Trace-Id、trace_id、链路追踪、traceId、X-Token-Expire-At、踢下线、
   revokeByUser、OffsetDateTime、时间格式。
-version: 1.9.0
+version: 1.10.0
 enabled: true
 metadata:
   type: sdk-spec

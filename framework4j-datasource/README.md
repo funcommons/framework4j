@@ -102,7 +102,34 @@ public class LogService {
 | `framework4j.datasource.datasources.<name>.druid.max-active` | `int` | `20` | 最大连接数 |
 | `framework4j.datasource.datasources.<name>.druid.max-wait` | `long` | `5000` | 获取连接超时（ms） |
 | `framework4j.datasource.datasources.<name>.aliases` | `List<String>` | — | 别名（同一数据源多名字） |
+| `framework4j.datasource.datasources.<name>.druid.filters` | `String` | `stat,slf4j` | Druid filter 链。**v1.10 起缺省不含 wall**（issue #28）：wall 的 `comment not allow` 会拦截 sql-tracing 的 `/*traceid=...*/` 注释前缀与 Flyway 带注释迁移脚本——安全强需求请显式选配 `stat,wall,slf4j` 并处理注释冲突（如 wall `commentAllow` 豁免 `/*traceid=` 前缀） |
 | `framework4j.datasource.datasources.<name>.sql-tracing.*` | — | — | 见 `framework4j-sql-tracing` |
+
+## 3.1 与 Spring Boot / MyBatis-Plus 自动配置共存（v1.10，issue #29）
+
+### 装配顺序：无需再双 exclude
+
+v1.10 起 `MultiDataSourceAutoConfiguration` 显式 `@AutoConfigureBefore(DataSourceAutoConfiguration / DruidDataSourceAutoConfigure)`——框架 `datasources` 配置存在时，五件套（DataSource/SqlSessionFactory/SqlSessionTemplate/TransactionManager/JdbcTemplate）先注册，Boot 与 Druid starter 的 `@ConditionalOnMissingBean` 装配自动让位。**v1.9 及之前消费方需要的双 exclude（`DataSourceAutoConfiguration` + Druid starter autoconfig）不再是必须项**（保留 exclude 也无害）。
+
+### 五件套 @Primary 契约与 MP 定制迁移清单
+
+框架工厂（`<name>SqlSessionFactory`，`MybatisSqlSessionFactoryBean`）**消费**的定制：
+
+| 定制 | 来源 | 说明 |
+|---|---|---|
+| dataSource | `datasources.<name>.url/...` | 五件套之一 |
+| mapperLocations | `datasources.<name>.mybatis-plus.mapper-locations` | mapper XML |
+| typeAliasesPackage | `datasources.<name>.mybatis-plus.type-aliases-package` | 实体别名 |
+| configLocation | `datasources.<name>.mybatis-plus.config-location` | mybatis XML 配置文件（可承载 settings/typeHandler 注册等） |
+| plugins | **`MybatisPlusInterceptor` 类型 bean** | **v1.10 修复**：此前从未 wire——框架方案 C 的分页/防全表更新/乐观锁拦截器是"惰性 bean"从未生效。v1.10 按类型注入：框架缺省注册（分页+防全表更新默认开，`datasources.default.mybatis-plus-plugins.*` 可调），用户自定义 `MybatisPlusInterceptor` bean 时框架让位、工厂引用用户的 |
+
+框架工厂**不直接消费**（迁移途径）：
+
+- `GlobalConfig`（metaObjectHandler 等）→ `config-location` XML 承载，或自建 `SqlSessionFactory` bean（命名 `<name>SqlSessionFactory` 覆盖框架定义）
+- `TypeHandler` 注册 → `config-location` 或 mapper 内联
+- `configuration.*` 细项（map-underscore-to-camel-case 等）→ `config-location`
+
+> mapper 经 MyBatis-Plus autoconfig 的 scanner `addToConfig` 注册进框架工厂——绑定关系实测成立；MP autoconfig 自身因框架五件套 `@Primary` 对 `@ConditionalOnMissingBean` 让位，其工厂定制不会生效，定制请走上表途径。
 
 ## 4. API 参考
 

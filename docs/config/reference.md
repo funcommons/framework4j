@@ -123,6 +123,30 @@
 | `header-name` | `X-Trace-Id` | 入站采纳 + 响应回显的 header 名 |
 | `mdc-key` | `traceId` | MDC key（v1.8 起可配置，tracelog 侧同步生效） |
 
+### framework4j.datetime
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `true` | 是否启用（默认开，缺省激活） |
+| `local-zone` | `Asia/Shanghai` | v1.10：本地格式分支（`@LocalTimeFormat` 态）换算目标时区；非法值启动失败 |
+
+> wire 契约（v1.10，issue #30）：ISO 态定长 `yyyy-MM-dd'T'HH:mm:ssXXX`（秒段恒存在）；
+> 本地格式态 `yyyy-MM-dd HH:mm:ss` 按目标时区换算墙钟。`default-zone`/`use-iso-format` 为不存在的键。
+
+### framework4j.datasource
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 是否启用（opt-in） |
+| `primary` | `default` | 默认数据源名 |
+| `datasources.<name>.url/username/password/driver-class-name` | — | 连接四件套 |
+| `datasources.<name>.druid.filters` | `stat,slf4j` | v1.10 起缺省不含 wall（issue #28：wall 拦注释 SQL，与 sql-tracing `/*traceid=`、Flyway 注释迁移冲突）——安全强需求显式选配 |
+| `datasources.<name>.druid.max-active` | `20` | 最大连接数 |
+| `datasources.<name>.mybatis-plus.mapper-locations` | — | mapper XML |
+| `datasources.<name>.mybatis-plus.type-aliases-package` | — | 实体别名 |
+| `datasources.<name>.mybatis-plus.config-location` | — | mybatis XML 配置（承载 GlobalConfig/TypeHandler 等定制） |
+| `datasources.<name>.sql-tracing.{mode,topic}` | per-ds 覆盖全局 | 见 sql-tracing 模块 |
+
 ### framework4j.idempotency
 
 | 配置项 | 默认值 | 说明 |

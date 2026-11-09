@@ -12,12 +12,14 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.format.FormatterRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 /**
  * 时间处理自动配置
@@ -27,7 +29,10 @@ import java.time.OffsetDateTime;
  *   <li>{@link TimeFormatInterceptor}：动态时间格式拦截器（基于 ThreadLocal 状态）</li>
  *   <li>{@link StringToOffsetDateTimeConverter}：String → OffsetDateTime 入参转换</li>
  *   <li>{@link StringArrayToOffsetDateTimeCollectionConverter}：String[] → 集合转换</li>
- *   <li>Jackson {@link DynamicTimeFilter}：OffsetDateTime → GMT+8 字符串序列化</li>
+ *   <li>Jackson {@link DynamicTimeFilter}：OffsetDateTime 定长序列化——ISO 态
+ *       {@code yyyy-MM-dd'T'HH:mm:ssXXX}，本地格式态按目标时区
+ *       {@code framework4j.datetime.local-zone}（缺省 Asia/Shanghai）换算墙钟
+ *       （v1.10，issue #30：修复变长 ISO wire 漂移 + 本地分支零时区换算）</li>
  * </ul>
  *
  * @since 2.0.0（从 framework4j-core 拆分为独立模块）
@@ -41,16 +46,27 @@ import java.time.OffsetDateTime;
         havingValue = "true",
         matchIfMissing = true
 )
+@EnableConfigurationProperties(DateTimeProperties.class)
 public class DateTimeAutoConfiguration implements DisposableBean {
 
     @Bean
-    public Jackson2ObjectMapperBuilderCustomizer framework4jDateTimeJacksonCustomizer() {
+    public Jackson2ObjectMapperBuilderCustomizer framework4jDateTimeJacksonCustomizer(DateTimeProperties properties) {
+        // v1.10 (issue #30-②)：目标时区可配；非法值启动即失败（fail-fast）
+        ZoneId localZone;
+        try {
+            localZone = ZoneId.of(properties.getLocalZone());
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "framework4j.datetime.local-zone 非法时区: '" + properties.getLocalZone()
+                            + "'（示例: Asia/Shanghai / UTC）", e);
+        }
+        final ZoneId zone = localZone;
         return builder -> {
             SimpleModule datetimeModule = new SimpleModule();
-            datetimeModule.addSerializer(OffsetDateTime.class, new DynamicTimeFilter());
+            datetimeModule.addSerializer(OffsetDateTime.class, new DynamicTimeFilter(zone));
             // v2.1 修复：用 modulesToInstall 累加而非 modules 覆盖（与 api 模块的 Long→String 模块共存）
             builder.modulesToInstall(datetimeModule);
-            log.info("【DateTime】Jackson OffsetDateTime 序列化器已启用（GMT+8 动态格式）");
+            log.info("【DateTime】Jackson OffsetDateTime 序列化器已启用（定长 ISO + 本地格式目标时区 {}）", zone);
         };
     }
 

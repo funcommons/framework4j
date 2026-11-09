@@ -81,7 +81,17 @@ public class DataSourceProperties {
         private String validationQuery = "SELECT 1";
         private long timeBetweenEvictionRunsMillis = 60000;
         private long minEvictableIdleTimeMillis = 300000;
-        private String filters = "stat,wall,slf4j";
+        /**
+         * Druid filter 链（逗号分隔）。
+         * <p>
+         * v1.10 (issue #28)：缺省 {@code stat,slf4j}（1.9 及之前为 {@code stat,wall,slf4j}）。
+         * wall（防火墙）的 {@code comment not allow} 策略会拦截注释 SQL——与同仓
+         * framework4j-sql-tracing 的 {@code /*traceid=...*&#47;} 前缀注释互斥，也会拦掉
+         * Flyway 带注释的迁移脚本。wall 属安全强需求，请<strong>显式选配</strong>：
+         * {@code druid.filters: stat,wall,slf4j}（并注意与 sql-tracing 的冲突，
+         * 可配 wall 的 commentAllow 豁免 {@code /*traceid=} 前缀）。
+         */
+        private String filters = "stat,slf4j";
         private String connectionProperties;
     }
 

@@ -28,8 +28,12 @@ import org.springframework.context.annotation.Bean;
 )
 public class SqlTracingAutoConfiguration {
 
+    /**
+     * v1.10 (issue #29-3)：static @Bean——消除 BPPChecker「not eligible for auto-proxying」WARN
+     * （非静态 @Bean 方法返回 BeanPostProcessor 需提前实例化配置类）。
+     */
     @Bean
-    public SqlTracingBeanPostProcessor sqlTracingBeanPostProcessor() {
+    public static SqlTracingBeanPostProcessor sqlTracingBeanPostProcessor() {
         log.info("【SQL-Tracing】sqlTracingBeanPostProcessor，Druid Filter 注入 trace_id");
         return new SqlTracingBeanPostProcessor();
     }

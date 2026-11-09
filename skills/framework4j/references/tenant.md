@@ -16,7 +16,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-tenant</artifactId>
-    <version>v1.9.0</version>
+    <version>v1.10.0</version>
 </dependency>
 ```
 
