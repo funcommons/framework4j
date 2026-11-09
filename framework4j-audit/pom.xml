@@ -8,7 +8,7 @@
     <parent>
         <groupId>fun.commons</groupId>
         <artifactId>framework4j</artifactId>
-        <version>1.10.0</version>
+        <version>1.10.1</version>
     </parent>
 
     <artifactId>framework4j-audit</artifactId>
@@ -22,6 +22,15 @@
             <groupId>fun.commons</groupId>
             <artifactId>framework4j-api</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <!-- v1.10.1 (issue #31)：AuditService 签名引用 HttpServletRequest（actor/ip 解析），
+             此前零申报——1.7.3 时代被 idempotency→starter-web→tomcat 泄漏链掩盖（#27 修复后裸奔），
+             WebFlux 消费方缺省激活即 NoClassDefFoundError。provided：容器提供实现，不传递（对齐 signature 口径） -->
+        <dependency>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>

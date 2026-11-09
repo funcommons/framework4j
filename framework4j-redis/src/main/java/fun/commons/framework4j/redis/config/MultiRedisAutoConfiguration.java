@@ -64,8 +64,13 @@ public class MultiRedisAutoConfiguration {
         return manager;
     }
 
+    /**
+     * v1.10.1 (issue #32)：static @Bean——#29-3 同族修复（datasource 侧已修，redis 侧遗漏）。
+     * 非静态 @Bean 方法返回 BeanPostProcessor 会触发 BPPChecker「not eligible for auto-proxying」WARN；
+     * static 后 Spring 无需提前实例化配置类。
+     */
     @Bean
-    public RedisOnBeanPostProcessor redisOnBeanPostProcessor(MultiRedisManager manager, Environment environment) {
+    public static RedisOnBeanPostProcessor redisOnBeanPostProcessor(MultiRedisManager manager, Environment environment) {
         RedisOnBeanPostProcessor processor = new RedisOnBeanPostProcessor(manager);
         processor.setEnvironment(environment);
         log.info("【Multi-Redis】redisOnBeanPostProcessor，@RedisOn注解处理器，支持类级别和字段级别的Redis数据源自动注入");

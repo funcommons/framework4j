@@ -24,7 +24,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-audit</artifactId>
-    <version>1.10.0</version>
+    <version>1.10.1</version>
 </dependency>
 ```
 

@@ -64,7 +64,7 @@ framework4j:
 </configuration>
 ```
 
-### 4. 鉴权 SPI（**必须实现**，`require-auth=true` 且未配置时启动 fail-fast）
+### 4. 鉴权 SPI（**必须实现**，`require-auth=true` 且无 validator bean 时为查询期 IllegalState——v1.10.1 勘误：非启动 fail-fast，issue #34）
 
 ```java
 @Component("traceLogAuthValidator")
@@ -104,7 +104,7 @@ curl -O http://host/api/logs/trace/abc123/export?format=json
 | 资源有界 | 全局 10w trace 上限 / 单 trace LTRIM 5000 / 24h TTL / per-trace 200 条/s 限速 |
 | 异步非阻塞 | LMAX Disruptor 按 traceId hash 分片 + Pipeline 批写，业务线程延迟 &lt; 0.05ms |
 | 优雅停机 | Disruptor drain + 超时保护（默认 10s） |
-| Redis 故障降级 | 本地滚动文件（**启动硬失败**）+ Replayer 异步回灌（容器化需挂 hostPath/PVC） |
+| Redis 故障降级 | 本地滚动文件（目录不可写时 WARN 停用降级能力，不影响启动——v1.10.1 起）+ Replayer 异步回灌（容器化需挂 hostPath/PVC） |
 | 多租户隔离 | `tenant.enabled=true` + `tenant.key-spel` → Redis Key 加租户前缀 |
 | Micrometer 指标 | appended / dropped / flushed / queue-depth / flush-duration / redis-fail |
 

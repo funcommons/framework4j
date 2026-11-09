@@ -142,11 +142,16 @@ public class TraceLogProperties {
 
     @Data
     public static class Api {
-        /** 是否强制鉴权（生产建议开启） */
+        /**
+         * 是否强制鉴权（生产建议开启）。
+         * <p>
+         * v1.10.1 (issue #34-②) 勘误：true 时若容器内无 {@code TraceLogAuthValidator} bean，
+         * 实际行为是<strong>首次查询请求时抛 IllegalStateException</strong>（运行时显形），
+         * 并非启动期 fail-fast——历史 javadoc 宣称的 fail-fast 与实况不符。
+         * 配合 SPI（{@code fun.commons.framework4j.tracelog.config.TraceLogAuthValidator}）
+         * 注册 validator bean 即可通过鉴权。
+         */
         private boolean requireAuth = true;
-
-        /** TraceLogAuthValidator Bean 名（未配置启动 fail-fast） */
-        private String authValidatorBean;
 
         /** 查询 API 路径 */
         private List<String> queryPathPatterns = List.of("/api/logs/trace/**");

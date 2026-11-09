@@ -32,7 +32,9 @@ public class SwitchPubSubListener implements MessageListener {
     private final StringRedisTemplate redis;
     private final SwitchRuleCache cache;
     /**
-     * 注入 Spring Boot 默认提供的 listener container（{@code spring-boot-starter-data-redis} 会自动装配）。
+     * v1.10.1 (issue #34-①) 勘误：Boot 的 RedisAutoConfiguration <b>从不</b>装配 listener container——
+     * 该容器由 TraceLogBeansConfig 自建（{@code traceLogRedisMessageListenerContainer}，
+     * 消费方自定义 RMLC bean 时让位），并非 starter 自动装配。
      */
     private final RedisMessageListenerContainer container;
 

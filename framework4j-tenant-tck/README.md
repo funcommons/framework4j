@@ -17,7 +17,7 @@ testImplementation('com.github.funcommons.framework4j:framework4j-tenant-tck:1.9
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-tenant-tck</artifactId>
-    <version>1.10.0</version>
+    <version>1.10.1</version>
     <scope>test</scope>
 </dependency>
 ```

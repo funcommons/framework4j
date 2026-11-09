@@ -105,6 +105,24 @@ public class TraceLogBeansConfig {
         return new SwitchRuleCache(props);
     }
 
+    /**
+     * v1.10.1 (issue #34-①)：自建 RedisMessageListenerContainer——Boot 的 RedisAutoConfiguration
+     * <b>从不</b>装配该容器（官方已知形态），此前依赖消费方自建，缺 bean 时 switchPubSubListener
+     * 创建即 NoSuchBeanDefinitionException 启动失败（TraceLogFailureAnalyzer 只是事后解释器，非修复）。
+     * 挂框架连接工厂；消费方自定义 RMLC 时经 {@code @ConditionalOnMissingBean} 让位——
+     * 与 fwk-cache 的 cacheInvalidateListener 同型 bean 的歧义（双 RMLC 无 @Primary 即
+     * NoUniqueBeanDefinitionException）一并消除。
+     */
+    @Bean
+    @org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean(RedisMessageListenerContainer.class)
+    public RedisMessageListenerContainer traceLogRedisMessageListenerContainer(
+            @org.springframework.beans.factory.annotation.Qualifier("traceLogStringRedisTemplate") StringRedisTemplate redis) {
+        RedisMessageListenerContainer container = new RedisMessageListenerContainer();
+        container.setConnectionFactory(redis.getConnectionFactory());
+        log.info("【TraceLog】traceLogRedisMessageListenerContainer（消费方未提供 RMLC 时的框架兜底装配）");
+        return container;
+    }
+
     @Bean
     @ConditionalOnMissingBean
     public SwitchPubSubListener switchPubSubListener(TraceLogProperties props,

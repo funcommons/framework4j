@@ -52,6 +52,15 @@ public class LocalFallbackWriter {
     private volatile BufferedWriter currentWriter;
     private volatile String currentHourKey;
 
+    /**
+     * v1.10.1 (issue #34-③)：目录不可写时降级停用（WARN）而非启动 fail-fast——
+     * fallback 是「Redis 故障时才有用」的应急面，为应急面目录权限炸掉主链路启动代价收益倒挂
+     * （非容器化 root 环境/CI 开闸即炸）。Redis 正常时本能力无感；Redis 故障 + 目录不可写时
+     * 日志无法落盘回灌（WARN 显形，容器化部署请挂载 hostPath / PVC）。
+     */
+    private volatile boolean available = true;
+    private volatile boolean unavailableWarned = false;
+
     public LocalFallbackWriter(TraceLogProperties props) {
         this.props = props;
         this.hostName = resolveHostName();
@@ -63,11 +72,17 @@ public class LocalFallbackWriter {
             Files.writeString(probe, "ok");
             Files.deleteIfExists(probe);
         } catch (IOException e) {
-            throw new IllegalStateException(
-                    "【TraceLog】fallback目录不可写: dir=" + baseDir + ", err=" + e.getMessage()
-                            + "\n提示：容器化部署必须挂载 hostPath / PVC 到该目录，避免 Pod 驱逐时丢失降级数据",
-                    e);
+            // v1.10.1 (issue #34-③)：WARN 降级，不再抛 IllegalStateException 阻断启动
+            available = false;
+            log.warn("【TraceLog】fallback目录不可写，本地降级能力停用（启动不受影响）: dir={}, err={}. "
+                    + "Redis 故障期间该部分日志将无法落盘回灌；容器化部署请挂载 hostPath / PVC 到 fallback.dir",
+                    baseDir, e.getMessage());
         }
+    }
+
+    /** v1.10.1 (issue #34-③)：fallback 能力是否可用（目录可写） */
+    public boolean isAvailable() {
+        return available;
     }
 
     /**
@@ -77,6 +92,13 @@ public class LocalFallbackWriter {
      */
     public void writeBatch(List<RawPayload> payloads) {
         if (payloads == null || payloads.isEmpty()) return;
+        if (!available) {
+            if (!unavailableWarned) {
+                unavailableWarned = true;
+                log.warn("【TraceLog】fallback 已停用（目录不可写），本次 {} 条降级日志丢弃", payloads.size());
+            }
+            return;
+        }
         writeLock.lock();
         try {
             BufferedWriter w = ensureWriter();
@@ -105,6 +127,9 @@ public class LocalFallbackWriter {
      * Replayer 调用，按行解析后批量回灌到 Redis。
      */
     public List<Path> listFallbackFiles() throws IOException {
+        if (!available) {
+            return java.util.List.of();
+        }
         try (Stream<Path> stream = Files.list(baseDir)) {
             return stream
                     .filter(p -> p.getFileName().toString().startsWith("tracelog-fallback-"))

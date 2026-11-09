@@ -88,7 +88,7 @@ framework4j:
 </configuration>
 ```
 
-### 4. 鉴权 SPI（**必须实现**，未配置启动 fail-fast）
+### 4. 鉴权 SPI（**必须实现**，`require-auth=true` 且无 validator bean 时为查询期 IllegalState——v1.10.1 勘误：非启动 fail-fast，issue #34）
 
 ```java
 @Component("traceLogAuthValidator")

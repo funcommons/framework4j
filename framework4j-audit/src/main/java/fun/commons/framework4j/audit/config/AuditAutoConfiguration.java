@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,6 +33,10 @@ import javax.sql.DataSource;
 @Slf4j
 @AutoConfiguration
 @ConditionalOnClass({AuditService.class, AuditAspect.class})
+// v1.10.1 (issue #31)：SERVLET 收窄——audit 的 actor/ip 解析本质是 servlet 栈能力
+// （AuditService 引用 HttpServletRequest），WebFlux 消费方缺省态（matchIfMissing=true）
+// introspect 即 NoClassDefFoundError。对齐 rate-limit 同族形：非 servlet 环境安静让位。
+@ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
 @ConditionalOnProperty(prefix = "framework4j.audit", name = "enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(AuditProperties.class)
 public class AuditAutoConfiguration {

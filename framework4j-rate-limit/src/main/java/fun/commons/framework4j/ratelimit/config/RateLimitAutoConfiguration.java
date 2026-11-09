@@ -74,8 +74,11 @@ public class RateLimitAutoConfiguration {
             @Override
             public void addInterceptors(InterceptorRegistry registry) {
                 if (properties.getPathPatterns() == null || properties.getPathPatterns().isEmpty()) {
-                    log.info("【RateLimit】未配置 path-patterns，限流拦截器不拦截任何路径（仅 @RateLimit 注解触发）");
-                    registry.addInterceptor(rateLimitInterceptor).addPathPatterns("/**");
+                    // v1.10.1 (issue #33-③)：兑现注释语义——空 path-patterns 只保留 @RateLimit 注解触发。
+                    // 此前注释宣称"仅注解触发"却注册 /**，无注解端点被全局缺省 100/1m/ip 静默限流。
+                    // 升级注意：依赖该隐式全站限流的消费方请显式配 path-patterns: ["/**"]（对齐 accesstoken v1.4.1 空值语义先例）。
+                    log.warn("【RateLimit】未配置 path-patterns → 限流拦截器不注册，仅 @RateLimit 注解触发。"
+                            + "如需全站缺省限流请显式配置 framework4j.rate-limit.path-patterns: [\"/**\"]");
                     return;
                 }
                 registry.addInterceptor(rateLimitInterceptor)

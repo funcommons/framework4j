@@ -89,7 +89,7 @@
 | `sync.max-ttl-seconds` | `3600` | 开关 TTL 上限 |
 | `elevation.allowed-packages` | `com.yourcompany` | 提权作用域包路径白名单 |
 | `elevation.default-level` | `DEBUG` | 提权默认级别 |
-| `api.require-auth` | `true` | 控制台 API 是否鉴权（true 时必须实现 TraceLogAuthValidator，否则启动 fail-fast） |
+| `api.require-auth` | `true` | 控制台 API 是否鉴权（true 时须注册 TraceLogAuthValidator bean；缺失为查询期 IllegalState 而非启动 fail-fast——v1.10.1 勘误，issue #34） |
 | `api.max-return-logs` | `1000` | 单次查询最大返回条数 |
 | `export.enabled` | `true` | 是否启用导出 |
 | `console.enabled` | `true` | 是否暴露控制台页面（`/tracelog/index.html`） |
