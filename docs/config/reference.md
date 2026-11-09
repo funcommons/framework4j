@@ -123,6 +123,27 @@
 | `header-name` | `X-Trace-Id` | 入站采纳 + 响应回显的 header 名 |
 | `mdc-key` | `traceId` | MDC key（v1.8 起可配置，tracelog 侧同步生效） |
 
+### framework4j.redis
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `enabled` | `false` | 是否启用（opt-in） |
+| `datasources.<name>.host/port/database/password` | `localhost/6379/0/—` | 连接四件套 |
+| `datasources.<name>.timeout` | `3000ms` | 命令超时 |
+| `datasources.<name>.aliases` | — | 同一数据源多名字 |
+| `datasources.<name>.template-type` | `STRING` | RedisTemplate 类型 |
+| `datasources.<name>.lettuce.pool.{max-active,max-idle,min-idle,max-wait}` | `8/8/0/-1` | 连接池 |
+| `datasources.<name>.redisson.enabled` | `false` | 同时装配 RedissonClient |
+| `primary.template` / `primary.client` | 自动推断 | `@Primary` 模板/客户端指名（缺省 default 数据源推导） |
+
+### framework4j.datasource.sql-tracing
+
+| 配置项 | 默认值 | 说明 |
+|---|---|---|
+| `datasources.<name>.sql-tracing.enabled` / 全局 `sql-tracing.enabled` | — | per-datasource 覆盖全局（v1.2.5 起 per-ds 优先） |
+| `mode` | `ALL` | `DISABLED` / `WRITE_ONLY` / `ALL` |
+| `topic` | — | 追踪标记 |
+
 ### framework4j.datetime
 
 | 配置项 | 默认值 | 说明 |

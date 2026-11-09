@@ -22,7 +22,7 @@
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-datetime</artifactId>
-    <version>1.9.0</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 
@@ -51,18 +51,22 @@ public record OrderVO(
 | 属性 | 类型 | 默认 | 说明 |
 |---|---|---|---|
 | `framework4j.datetime.enabled` | `boolean` | `true` | 是否启用本模块 |
-| `framework4j.datetime.default-zone` | `String` | `Asia/Shanghai` | 默认时区 |
-| `framework4j.datetime.use-iso-format` | `boolean` | `true` | `true` 输出 ISO-8601，`false` 输出时间戳（毫秒） |
+| `framework4j.datetime.local-zone` | `String` | `Asia/Shanghai` | **v1.10（issue #30-②）**：本地格式分支（`@LocalTimeFormat` 态）换算的目标时区；非法值启动即失败 |
+
+&gt; **wire 契约（v1.10，issue #30）**：ISO 态输出&lt;strong&gt;定长&lt;/strong&gt; `yyyy-MM-dd'T'HH:mm:ssXXX`
+&gt; （如 `2026-11-09T14:30:00+08:00`，秒段恒存在——1.9 及之前为变长 `toString()`，秒为 0 时省略秒段导致
+&gt; wire 形态漂移）；本地格式态输出 `yyyy-MM-dd HH:mm:ss`，&lt;strong&gt;先换算到 `local-zone` 墙钟&lt;/strong&gt;
+&gt; （此前直接按值自带 offset 排墙钟，UTC 值错 8 小时）。历史上文档出现过的
+&gt; `framework4j.datetime.default-zone` / `use-iso-format` 均为不存在的键。
 
 ## 4. API 参考
 
 ### `DateTimeAutoConfiguration`
 
-注册以下 Jackson 组件到 `ObjectMapper`：
-- `OffsetDateTimeSerializer` → ISO-8601 字符串
-- `LocalDateTimeSerializer` → `yyyy-MM-dd HH:mm:ss`
-- `JavaTimeModule`（JSR-310）
-- `OffsetDateTime` ↔ `Long` 转换器（用于 MyBatis）
+注册以下组件：
+- `DynamicTimeFilter`（Jackson `OffsetDateTime` 序列化器）→ ISO 态定长 `yyyy-MM-dd'T'HH:mm:ssXXX` / 本地格式态 `yyyy-MM-dd HH:mm:ss`（按 `local-zone` 换算墙钟）
+- `TimeFormatInterceptor`（MVC 拦截器）→ 检测 handler/方法/参数上的 `@LocalTimeFormat`，经 `TimeFormatStateHolder`（ThreadLocal）切换本请求的序列化分支
+- `StringToOffsetDateTimeConverter` / `StringArrayToOffsetDateTimeCollectionConverter` → 入参 String → OffsetDateTime 转换
 
 ### `TimeFormatInterceptor`
 
@@ -80,13 +84,16 @@ public class MyTimeFormatConfig implements WebMvcConfigurer {
 }
 ```
 
-### `@TimeFormat`（注解）
+### `@LocalTimeFormat`（注解）
+
+标在 Controller 类 / 方法 / 参数上（v1.2.4 起 `@Target` 含 PARAMETER，参数位仅语义标记、
+无运行时效果——解析能力来自全局转换器），经 `TimeFormatInterceptor` 检测后把本请求的
+`OffsetDateTime` 序列化切到本地格式分支（按 `local-zone` 换算墙钟）：
 
 ```java
-public record ReportVO(
-    @TimeFormat(pattern = "yyyy年MM月dd日") LocalDate reportDate,
-    @TimeFormat(pattern = "HH:mm:ss") LocalTime openTime
-) {}
+@LocalTimeFormat
+@GetMapping("/v1/admin/reports")
+public ApiResponse<ReportVO> report() { ... }
 ```
 
 ## 5. 示例
@@ -102,23 +109,26 @@ public ApiResponse<OrderVO> getOrder(@PathVariable String id) {
 }
 ```
 
-### 5.2 时间戳输出（前端图表）
-
-```yaml
-framework4j:
-  datetime:
-    use-iso-format: false  # 输出 1718660400000
-```
-
-### 5.3 自定义格式
+### 5.2 本地格式输出（后台管理统一北京时间墙钟）
 
 ```java
-public record UserVO(
-    String id,
-    @TimeFormat(pattern = "yyyy-MM-dd") LocalDate birthday,
-    @TimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime lastLoginAt
-) {}
+// controller 方法级标注（也可类级）——本接口所有 OffsetDateTime 字段走本地格式分支
+@LocalTimeFormat
+@GetMapping("/v1/admin/orders")
+public ApiResponse<List<OrderVO>> listOrders() { ... }
+// createdAt: UTC offset 值也换算到 framework4j.datetime.local-zone（缺省 Asia/Shanghai）墙钟
+// → "2026-11-09 22:00:00"
 ```
+
+&gt; 本模块没有「输出毫秒时间戳」模式（历史文档的 `use-iso-format` 是不存在的键）；需要时间戳
+&gt; 请在 VO 层自行转换（`value.toInstant().toEpochMilli()`）。
+
+### 5.3 非 OffsetDateTime 类型
+
+本模块只接管 `OffsetDateTime` 序列化；`LocalDate` / `LocalDateTime` 等由 Jackson
+`JavaTimeModule`（Boot 缺省）按各自 ISO 格式输出。本模块无字段级自定义 pattern 注解——
+历史文档的 `@TimeFormat` 不存在，实际注解是 `@LocalTimeFormat`
+（`fun.commons.framework4j.datetime.LocalTimeFormat`，方法/类/参数级，开关整个请求的本地格式分支，见 5.2）。
 
 ## 6. 错误码
 
@@ -130,10 +140,10 @@ public record UserVO(
 A：`OffsetDateTime` 带时区信息，跨时区传输无歧义。`LocalDateTime` 不带时区，存数据库时依赖服务器时区设置，容易出 bug。
 
 **Q2：前端需要时间戳怎么办？**
-A：`framework4j.datetime.use-iso-format=false`，所有时间字段输出毫秒时间戳（`Long` 类型，序列化为 `String` 防精度丢失）。
+A：本模块无毫秒时间戳输出模式（历史文档的 `framework4j.datetime.use-iso-format` 是不存在的键）。需要时间戳请在 VO 层自行转换（`value.toInstant().toEpochMilli()`），Long 字段由 framework4j-web 全局 Long→String 防精度丢失。
 
-**Q3：`TimeFormatInterceptor` 和 `@TimeFormat` 区别？**
-A：`Interceptor` 按路径批量配置（适合后台管理统一格式）；`@TimeFormat` 按字段精细控制（适合个别特殊字段）。
+**Q3：`TimeFormatInterceptor` 和 `@LocalTimeFormat` 的关系？**
+A：`@LocalTimeFormat` 标注（类/方法/参数级），`TimeFormatInterceptor` 在请求入口检测该注解并设置 ThreadLocal 状态，`DynamicTimeFilter` 序列化时按状态切分支——三者是一条链路，不是两个独立开关。
 
 **Q4：数据库存 `DATETIME` 还是 `TIMESTAMP`？**
 A：推荐 `DATETIME` + MyBatis `OffsetDateTimeTypeHandler`。`TIMESTAMP` 受 MySQL `time_zone` 影响，跨地域部署易错。

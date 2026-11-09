@@ -12,8 +12,9 @@ export default defineConfig({
       { text: '快速开始', link: '/guide/quick-start' },
       { text: '模块', link: '/modules/api' },
       { text: 'Skill', link: '/skills/fwk4j-sdk' },
-      { text: '配置工具', link: '/config/generator' },
+      { text: '配置参考', link: '/config/reference' },
       { text: 'FAQ', link: '/faq' },
+      { text: '版本历史', link: '/guide/version-history' },
     ],
     sidebar: {
       '/guide/': [
@@ -22,6 +23,7 @@ export default defineConfig({
           items: [
             { text: '快速开始', link: '/guide/quick-start' },
             { text: '架构总览', link: '/guide/architecture' },
+            { text: '版本历史', link: '/guide/version-history' },
           ]
         }
       ],
@@ -136,7 +138,7 @@ export default defineConfig({
       ]
     },
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/your-org/framework4j' }
+      { icon: 'github', link: 'https://github.com/funcommons/framework4j' }
     ],
     footer: {
       message: '基于 Apache-2.0 协议开源',

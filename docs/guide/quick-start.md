@@ -15,7 +15,7 @@
 <dependency>
     <groupId>com.github.funcommons.framework4j</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>v1.9.0</version>
+    <version>v1.10.0</version>
 </dependency>
 ```
 
@@ -30,7 +30,7 @@ mvn -DskipTests install
 <dependency>
     <groupId>fun.commons</groupId>
     <artifactId>framework4j-all</artifactId>
-    <version>1.9.0</version>
+    <version>1.10.0</version>
 </dependency>
 ```
 

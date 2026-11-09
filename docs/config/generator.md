@@ -1,38 +1,36 @@
-# 在线配置生成
+# 配置速查
 
-> 启动 demo 后访问 [http://localhost:8080/config-tool.html](http://localhost:8080/config-tool.html)
+> 本页此前描述的「在线配置生成工具 config-tool.html」**从未发布**（v1.1.0 文档虚构，仓库中不存在该文件），
+> v1.10 文档评审时移除该描述。配置获取途径以下方真实入口为准。
 
-## 使用方式
+## 配置获取途径
 
-1. **勾选模块**：按需勾选要启用的模块（默认全选）
-2. **填参数**：每个模块展开配置表单（默认值已预填，可直接修改）
-3. **实时预览**：右侧自动生成 `framework4j:` YAML 段
-4. **复制**：点击"复制到剪贴板"按钮
+### 1. 全模块配置参考（推荐）
 
-## 静态访问
+**[配置参考 →](/config/reference)** —— 全模块配置键、默认值、说明速查表，随版本同步维护。
 
-配置工具是纯 HTML + vanilla JS 页面，无需后端支持。可直接在浏览器打开：
+### 2. 模块文档
 
-```bash
-# 方式 1：启动 demo 后访问
-open http://localhost:8080/config-tool.html
+每个模块文档（左侧「模块」导航）含各自的完整配置表与最小可运行示例：
 
-# 方式 2：直接打开文件
-open framework4j-demo/src/main/resources/static/config-tool.html
-```
+| 场景 | 入口 |
+|---|---|
+| 统一响应/错误码/trace 链路 | [framework4j-web](/modules/web) |
+| 鉴权（JWT + Refresh + 角色） | [framework4j-accesstoken](/modules/accesstoken) |
+| 多数据源 + Druid（filters/wall 注意事项） | [framework4j-datasource](/modules/datasource) |
+| 多 Redis | [framework4j-redis](/modules/redis) |
+| 分布式 ID / OpenID | [framework4j-id](/modules/id) |
+| 时间序列化 wire 契约 | [framework4j-datetime](/modules/datetime) |
+| 动态日志采集 | [framework4j-tracelog](/modules/tracelog) |
 
-## 覆盖的模块
+### 3. 最小可跑配置
 
-| 模块 | 配置项数 | 说明 |
+[快速开始](/guide/quick-start) 含 JitPack/本地 install 双方式 + 最小 application.yml
+（含 v1.8 起 id/openid 显式启用说明）。
+
+## 真实存在的自动化工具
+
+| 工具 | 位置 | 说明 |
 |---|---|---|
-| Redis | 4 | host/port/database/enabled |
-| AccessToken | 5 | secret-key/hash-salt/expire-time |
-| 签名 | 4 | timestamp-tolerance/nonce-ttl |
-| 限流 | 5 | limit/window/scope/whitelist |
-| 缓存 | 4 | ttl/null-ttl/l1/single-flight |
-| 审计 | 3 | hash-chain/algorithm |
-| 脱敏 | 2 | encryption-key |
-| 幂等 | 2 | ttl |
-| 分布式 ID | 3 | enabled/worker.strategy/fallback-to-ip |
-| 时间处理 | 1 | enabled |
-| SQL 追踪 | 2 | mode |
+| 统一 AI skill | [skills/framework4j](https://github.com/funcommons/framework4j/tree/main/skills/framework4j) | AI 编码工具引入后按规范使用 SDK，含模块路由表与跨模块硬规范 |
+| 依赖泄漏防护 | `framework4j-compat-test` 的 `DependencyLeakGuardTest` | 构建期锁定依赖面契约（web starter 必须 optional 等） |

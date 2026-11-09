@@ -1,5 +1,21 @@
 # 常见问题
 
+## Q: 升级 v1.8+ 后 id / OpenID 功能静默失效
+
+**A**: v1.8 起 `framework4j.id.enabled` / `framework4j.openid.enabled` 改为**显式启用**（缺省不激活，issue #26）——此前「引依赖即激活」。升级后未显式配置 `true` 的应用模块不装配。注意子开关（`mybatis.enabled` 等）缺省跟随父开关。另外配置键是 `framework4j.id.worker.strategy`（redis|ip），历史文档的 `worker-id-strategy` / `ip-hash` 是不存在的键。
+
+## Q: 升级 v1.10 后接口返回的时间字符串变了
+
+**A**: v1.10 修复了两类 wire 契约缺陷（issue #30）：ISO 态从变长 `toString()`（秒为 0 时省略秒段，`14:30+08:00` ↔ `14:30:05+08:00` 漂移）改为**定长** `yyyy-MM-dd'T'HH:mm:ssXXX`；本地格式分支（`@LocalTimeFormat` 态）此前按值自带 offset 排墙钟（UTC 值错 8 小时），现在先换算到 `framework4j.datetime.local-zone`（缺省 Asia/Shanghai）。按 ISO 弹性解析的消费方无感；对字符串做定长切分的消费方此前本就随数据随机崩，定长后恒定。
+
+## Q: 升级 v1.10 后 SQL 注入防火墙（wall）不生效了
+
+**A**: v1.10 起 `druid.filters` 缺省 `stat,wall,slf4j` → **`stat,slf4j`**（issue #28）：wall 的 `comment not allow` 拦截注释 SQL——与同仓 sql-tracing 的 `/*traceid=...*/` 前缀互斥，也拦 Flyway 带注释迁移。需要 wall 请显式选配 `filters: stat,wall,slf4j`，并用 wall 的 `commentAllow` 豁免 `/*traceid=` 前缀实现两者兼得。
+
+## Q: MyBatis-Plus 分页插件不生效（多数据源场景）
+
+**A**: v1.10 前框架注册的 `MybatisPlusInterceptor` 从未 wire 进框架 SqlSessionFactory（惰性 bean）——分页从未真正生效（issue #29）。v1.10 起按类型注入：用户自定义 `MybatisPlusInterceptor` bean 时自动接管。GlobalConfig/TypeHandler 定制走 `datasources.<name>.mybatis-plus.config-location` 或自建工厂，详见 datasource 模块文档 §3.1。
+
 ## Q: 启动报错 "spring.application.name 必须配置"
 
 **A**: `framework4j.redis` / `framework4j.access-token` / `framework4j.signature` 等模块使用 `spring.application.name` 作为 Redis key 前缀。必须在 `application.yml` 配置：

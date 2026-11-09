@@ -1,0 +1,1 @@
+import{_ as a,o as i,c as e,a0 as t}from"./chunks/framework.jwovEGr5.js";const k=JSON.parse('{"title":"常见问题","description":"","frontmatter":{},"headers":[],"relativePath":"faq.md","filePath":"faq.md"}'),n={name:"faq.md"};function l(o,s,d,p,r,h){return i(),e("div",null,[...s[0]||(s[0]=[t("",31)])])}const g=a(n,[["render",l]]);export{k as __pageData,g as default};
